@@ -1,0 +1,5 @@
+-Q theories PosProofs
+-arg -w -arg -projection-no-head-constant
+
+./theories/Rstruct_topology.v
+./theories/sampling.v

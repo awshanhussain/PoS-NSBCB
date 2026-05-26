@@ -1,0 +1,515 @@
+  From mathcomp Require Import all_ssreflect.
+  From mathcomp Require Import ssralg poly ssrnum ssrint interval finmap.
+  From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
+  From mathcomp Require Import cardinality fsbigop.
+  Require Reals Interval.Tactic.
+  From PosProofs Require Import Rstruct_topology.
+  From mathcomp Require Import (canonicals) Rstruct.
+  From mathcomp Require Import exp numfun lebesgue_measure lebesgue_integral.
+  From mathcomp Require Import reals ereal interval_inference topology normedtype.
+  From mathcomp Require Import sequences realfun convex real_interval.
+  From mathcomp Require Import derive esum measure exp numfun lebesgue_measure measurable_realfun.
+  From mathcomp Require Import lebesgue_integral kernel probability.
+  From mathcomp Require Import hoelder unstable.
+
+  From HB Require Import structures.
+  From PosProofs Require Import sampling.
+
+  Import Order.TTheory GRing.Theory Num.Def Num.Theory.
+  Import numFieldTopology.Exports numFieldNormedType.Exports.
+  Import hoelder ess_sup_inf.
+  Set Implicit Arguments.
+  Unset Strict Implicit.
+  Unset Printing Implicit Defensive.
+
+
+  Set Printing Notations.
+  Unset Printing Implicit.
+  Unset Printing Coercions.
+  Unset Printing Universes.
+  Unset Printing All.
+
+
+
+
+  Section chain_growth.
+    Local Open Scope ereal_scope.
+
+    Local Open Scope classical_set_scope.
+    Local Open Scope ring_scope.
+    Let R := Rdefinitions.R.
+    Context {d} (T : measurableType d)  (P : probability T R). 
+
+    Variable pLs pSs pAs : R.
+    Variable nbre_de_slots : nat.
+    Hypothesis n_sup_O: (0 < nbre_de_slots)%nat. 
+    Hypothesis pLs01 : (0 <= pLs <= 1)%R.
+    Hypothesis pSs01 : (0 <= pSs <= 1)%R.
+    Hypothesis pAs01 : (0 <= pAs <= 1)%R.
+    Variable LS : nbre_de_slots.-tuple (bernoulliRV P pLs).
+    Variable SS : nbre_de_slots.-tuple (bernoulliRV P pSs).
+    Variable AS : nbre_de_slots.-tuple (bernoulliRV P pAs).
+    Variable deltaLs deltaSs deltaAs : R.
+    Hypothesis delta_range_Ls : (0 < deltaLs < 1)%R.
+    Hypothesis delta_range_Ss : (0 < deltaSs < 1)%R.
+    Hypothesis delta_range_As : (0 < deltaAs < 1)%R.
+    Hypothesis lottery_assumption_CP : exists epsilon , (epsilon > 0) -> pSs >= (pAs *+ 2) + epsilon .
+    Hypothesis lottery_assumption_CQ : exists epsilon , (epsilon > 0) -> pLs >= pAs + epsilon.
+    Definition LS_r := bool_trial_value LS.
+    Definition SS_r := bool_trial_value SS.
+    Definition AS_r := bool_trial_value AS.
+    
+    
+    Check (sampling_ineq3 pLs01 LS delta_range_Ls).
+    Check (sampling_ineq3 pSs01 SS  delta_range_Ss).
+    Check (sampling_ineq2 pAs01 AS n_sup_O delta_range_As).
+
+      
+    Lemma complementary_specialized_LS : 
+    let X' := bool_trial_value LS in
+    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    (\X_nbre_de_slots P) [set i | ~~ (X' i <= (1 - deltaLs) * fine mu)%R ]%R
+    = 
+      let X' := bool_trial_value LS in
+    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    (((1%R)%:E - 
+      (\X_nbre_de_slots P) [set i | X' i <= (1 - deltaLs) * fine mu ]%R))%E.
+    Proof.
+      rewrite /= .
+      set X' := bool_trial_value LS.
+      set mu := 'E_(\X_nbre_de_slots P)[X'].
+      set B :=  (1 - deltaLs) * fine mu.
+      set A := [set i | X' i <= B ].
+      set Pr := (\X_nbre_de_slots P).
+      have  Hsame :
+      [set i | ~~ (X' i <= B )] = ~` A.
+      {
+      apply/seteqP.
+      split.
+      - move => i Hi.
+        rewrite /A /= .
+        rewrite /= in Hi.
+        move /negP in Hi.
+        apply Hi.
+      move => i Hi.
+      rewrite /A /= in Hi.
+      rewrite /=.
+      apply /negP.
+      apply Hi.
+      }
+      rewrite Hsame.
+      apply probability_setC.
+      rewrite /A.
+      have HfullandA:
+      setT `&` A = A.
+      {
+        apply/seteqP.
+        split.
+        - move => i Hi.
+          rewrite /A /=.
+          rewrite /A /= in Hi.
+          destruct Hi.
+          apply/H0.
+        move => i Hi.
+        rewrite /A /= in Hi.
+        rewrite /A /=.
+        split.
+          - apply/I.
+        apply Hi.
+      }
+      rewrite -/A.
+      rewrite -HfullandA.
+      apply: (measurable_fun_le (D := setT) (f := X') (g := fun _ => B)) .
+      - apply: measurableT.
+      - by rewrite //=.
+      by rewrite //=.
+    Qed.
+      
+
+
+
+    Lemma complementary_Ls_Bound :
+    let X' := bool_trial_value LS in
+    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    (\X_nbre_de_slots P) [set i | (1 - deltaLs) * fine mu <  X' i ]%R
+    = 
+      let X' := bool_trial_value LS in
+    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    (((1%R)%:E - 
+      (\X_nbre_de_slots P) [set i | X' i <= (1 - deltaLs) * fine mu ]%R))%E.
+    Proof.
+    rewrite -complementary_specialized_LS /=.
+    set X' := bool_trial_value LS.
+    set mu := 'E_(\X_nbre_de_slots P)[X'].
+    set B := ((1 - deltaLs) * fine mu)%R.
+    have Hset :
+    [set i | B < X' i]%R =
+    [set i | ~~ (X' i <= B)%R].
+    {
+      rewrite seteqP.
+      split.
+      - move  => i Hn /=.
+        rewrite -ltNge.
+        apply Hn.
+      move => i Hn /=.
+      rewrite /= -ltNge in Hn.
+      apply Hn.
+    }
+    by rewrite Hset.
+  Qed.
+
+
+
+
+  Theorem chain_growth_bound : 
+    let X' := bool_trial_value LS in
+    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    (((1%R)%:E -
+      (expR (-(fine mu * deltaLs ^+ 2) / 2)%R)%:E)%E
+    <=
+    (\X_nbre_de_slots P)
+      [set i | (1 - deltaLs) * fine mu < X' i]%R)%E.
+    Proof.
+      rewrite /=.
+      
+      have H1:= (sampling_ineq3 pLs01 LS delta_range_Ls).
+      rewrite complementary_Ls_Bound /=.
+      rewrite /= in H1.
+      set X' := bool_trial_value LS.
+      set mu := 'E_(\X_nbre_de_slots P)[X'].
+      rewrite /mu -leeN2 in H1.
+      rewrite /mu.
+      by apply : leeD2l H1.
+    Qed.
+
+
+
+
+      Lemma complementary_specialized_SS : 
+    let X' := bool_trial_value SS in
+    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    (\X_nbre_de_slots P) [set i | ~~ (X' i <= (1 - deltaSs) * fine mu)%R ]%R
+    = 
+      let X' := bool_trial_value SS in
+    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    (((1%R)%:E - 
+      (\X_nbre_de_slots P) [set i | X' i <= (1 - deltaSs) * fine mu ]%R))%E.
+    Proof.
+      rewrite /= .
+      set X' := bool_trial_value SS.
+      set mu := 'E_(\X_nbre_de_slots P)[X'].
+      set B :=  (1 - deltaSs) * fine mu.
+      set A := [set i | X' i <= B ].
+      set Pr := (\X_nbre_de_slots P).
+      have  Hsame :
+      [set i | ~~ (X' i <= B )] = ~` A.
+      {
+      apply/seteqP.
+      split.
+      - move => i Hi.
+        rewrite /A /= .
+        rewrite /= in Hi.
+        move /negP in Hi.
+        apply Hi.
+      move => i Hi.
+      rewrite /A /= in Hi.
+      rewrite /=.
+      apply /negP.
+      apply Hi.
+      }
+      rewrite Hsame.
+      apply probability_setC.
+      rewrite /A.
+      have HfullandA:
+      setT `&` A = A.
+      {
+        apply/seteqP.
+        split.
+        - move => i Hi.
+          rewrite /A /=.
+          rewrite /A /= in Hi.
+          destruct Hi.
+          apply/H0.
+        move => i Hi.
+        rewrite /A /= in Hi.
+        rewrite /A /=.
+        split.
+          - apply/I.
+        apply Hi.
+      }
+      rewrite -/A.
+      rewrite -HfullandA.
+      apply: (measurable_fun_le (D := setT) (f := X') (g := fun _ => B)) .
+      - apply: measurableT.
+      - by rewrite //=.
+      by rewrite //=.
+    Qed.
+
+    Lemma complementary_SS_bound:
+    let X' := bool_trial_value SS in
+    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    (\X_nbre_de_slots P) [set i | (1 - deltaSs) * fine mu <  X' i ]%R
+    = 
+      let X' := bool_trial_value SS in
+    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    (((1%R)%:E - 
+      (\X_nbre_de_slots P) [set i | X' i <= (1 - deltaSs) * fine mu ]%R))%E.
+    Proof.
+    rewrite -complementary_specialized_SS /=.
+    set X' := bool_trial_value SS.
+    set mu := 'E_(\X_nbre_de_slots P)[X'].
+    set B := ((1 - deltaSs) * fine mu)%R.
+    have Hset :
+    [set i | B < X' i]%R =
+    [set i | ~~ (X' i <= B)%R].
+    {
+      rewrite seteqP.
+      split.
+      - move  => i Hn /=.
+        rewrite -ltNge.
+        apply Hn.
+      move => i Hn /=.
+      rewrite /= -ltNge in Hn.
+      apply Hn.
+    }
+    by rewrite Hset.
+  Qed.
+
+      
+
+
+  Theorem complementary_SS_event : 
+    let X' := bool_trial_value SS in
+    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    (((1%R)%:E -
+      (expR (-(fine mu * deltaSs ^+ 2) / 2)%R)%:E)%E
+    <=
+    (\X_nbre_de_slots P)
+      [set i | (1 - deltaSs) * fine mu < X' i]%R)%E.
+    Proof.
+      rewrite /=.
+      
+      have H1:= (sampling_ineq3 pSs01 SS delta_range_Ss).
+      rewrite complementary_SS_bound /=.
+      rewrite /= in H1.
+      set X' := bool_trial_value SS.
+      set mu := 'E_(\X_nbre_de_slots P)[X'].
+      rewrite /mu -leeN2 in H1.
+      rewrite /mu.
+      by apply : leeD2l H1.
+    Qed.
+
+
+  Lemma complementary_specialized_AS : 
+    let X' := bool_trial_value AS in
+    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    (\X_nbre_de_slots P) [set i | ~~ (X' i >= (1 + deltaAs) * fine mu)%R ]%R
+    = 
+      let X' := bool_trial_value AS in
+    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    (((1%R)%:E - 
+      (\X_nbre_de_slots P) [set i | X' i >= (1 + deltaAs) * fine mu ]%R))%E.
+    Proof.
+      rewrite /= .
+      set X' := bool_trial_value AS.
+      set mu := 'E_(\X_nbre_de_slots P)[X'].
+      set B :=  (1 + deltaAs) * fine mu.
+      set A := [set i | X' i >= B ].
+      set Pr := (\X_nbre_de_slots P).
+      have  Hsame :
+      [set i | ~~ (X' i >= B )] = ~` A.
+      {
+      apply/seteqP.
+      split.
+      - move => i Hi.
+        rewrite /A /= .
+        rewrite /= in Hi.
+        move /negP in Hi.
+        apply Hi.
+      move => i Hi.
+      rewrite /A /= in Hi.
+      rewrite /=.
+      apply /negP.
+      apply Hi.
+      }
+      rewrite Hsame.
+      apply probability_setC.
+      rewrite /A.
+      have HfullandA:
+      setT `&` A = A.
+      {
+        apply/seteqP.
+        split.
+        - move => i Hi.
+          rewrite /A /=.
+          rewrite /A /= in Hi.
+          destruct Hi.
+          apply/H0.
+        move => i Hi.
+        rewrite /A /= in Hi.
+        rewrite /A /=.
+        split.
+          - apply/I.
+        apply Hi.
+      }
+      rewrite -/A.
+      rewrite -HfullandA.
+      apply: (measurable_fun_le (D := setT) (f := fun _ => B) (g :=X' )) .
+      - apply: measurableT.
+      - by rewrite //=.
+      by rewrite //=.
+    Qed.
+
+
+Lemma complementary_AS_bound:
+  let X' := bool_trial_value AS in
+  let mu := 'E_(\X_nbre_de_slots P)[X'] in
+  (\X_nbre_de_slots P) [set i |  X' i   < (1 + deltaAs) * fine mu ]%R
+  = 
+  let X' := bool_trial_value AS in
+  let mu := 'E_(\X_nbre_de_slots P)[X'] in
+  (((1%R)%:E - 
+  (\X_nbre_de_slots P) [set i | X' i >= (1 + deltaAs) * fine mu ]%R))%E.
+  Proof.
+    rewrite -complementary_specialized_AS /=.
+    set X' := bool_trial_value AS.
+    set mu := 'E_(\X_nbre_de_slots P)[X'].
+    set B := ((1 + deltaAs) * fine mu)%R.
+    have Hset :
+    [set i | X' i  < B]%R =
+    [set i | ~~ (X' i >= B)%R].
+    {
+      rewrite seteqP.
+      split.
+      - move  => i Hn /=.
+        rewrite -ltNge.
+        apply Hn.
+      move => i Hn /=.
+      rewrite /= -ltNge in Hn.
+      apply Hn.
+    }
+    by rewrite Hset.
+  Qed.
+
+
+
+  Theorem complementary_AS_event : 
+    let X' := bool_trial_value AS in
+    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    (((1%R)%:E -
+      (expR (-(fine mu * deltaAs ^+ 2) / 3)%R)%:E)%E
+    <=
+    (\X_nbre_de_slots P)
+      [set i | X' i < (1 + deltaAs) * fine mu]%R)%E.
+    Proof.
+      rewrite /=.
+      
+      have H1:= (sampling_ineq2 pAs01 AS n_sup_O delta_range_As).
+      rewrite complementary_AS_bound /=.
+      rewrite /= in H1.
+      set X' := bool_trial_value AS.
+      set mu := 'E_(\X_nbre_de_slots P)[X'].
+      rewrite /mu -leeN2 in H1.
+      rewrite /mu.
+      by apply : leeD2l H1.
+    Qed.
+
+
+
+Lemma SS_gt_2AS : 
+    let XSS := bool_trial_value SS in
+    let XAS := bool_trial_value AS in
+    let muSS := 'E_(\X_nbre_de_slots P)[XSS] in
+    let muAS := 'E_(\X_nbre_de_slots P)[XAS] in
+    ( ((1+deltaAs) * fine muAS) *+ 2) < (1 - deltaSs) * fine muSS
+    ->
+    forall r,
+    (1+deltaAs) * fine muAS > AS_r r  ->
+    ((1-deltaSs) * fine muSS) < SS_r r->
+    (SS_r r> (AS_r r) *+ 2).
+    Proof.
+      move => XSS XAS muSS muAS H1 r H11 H12.
+      have H112T :
+      AS_r r *+ 2< ((1 + deltaAs) * fine muAS) *+ 2.
+      {
+        Search "ltr_pmul2l".
+        rewrite  ltr_wpMn2r.
+        - rewrite //=.
+        - rewrite //=.
+        apply H11.
+      }
+      Print lt_trans.
+      apply: (lt_trans H112T).
+      apply: (lt_trans H1).
+      apply H12.
+    Qed.
+
+
+Variables  (epsilon:R).
+Variables (a b: R) (c :R).
+
+Goal a  <= b * c.
+Proof.
+  rewrite -ler_pdivrMr.
+
+Check mulrC.
+Goal a * b = b * a.
+  Proof.
+    rewrite mulrC.
+
+Lemma epsilon_condition_CP :
+  (1 - deltaSs) * ((pAs *+ 2) + epsilon) >
+  (1 + deltaAs) * (pAs *+ 2) ->
+  epsilon > (((1 + deltaAs) / (1 - deltaSs)) - 1) * (pAs *+ 2).
+  
+  Proof.
+    move => H.
+    rewrite (mulrC (1 - deltaSs) (pAs *+ 2 + epsilon) ) in H.
+
+    rewrite -(ltr_pdivrMr (pAs *+ 2 + epsilon)) in H.
+    rewrite mulrBl.
+    rewrite (mulrC (1 + deltaAs)) in H.
+    rewrite (mulrC (pAs *+ 2)) in H.
+    rewrite mulrC.
+    rewrite mulrC.
+    rewrite ltrBlDr.
+    About mul1r.
+    rewrite mul1r.
+    rewrite (addrC epsilon). 
+    rewrite -mulrA.
+    rewrite (mulrC ((1 - deltaSs)^-1)).
+    rewrite mulrA.
+    apply H.
+    rewrite subr_gt0.
+    move/andP : delta_range_Ss => [H1 H2].
+    apply H2.
+  Qed.
+    
+
+
+
+
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+     
+    
+
+
+  
+
+
+
+
