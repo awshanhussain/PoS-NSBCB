@@ -27,6 +27,7 @@ Open Scope fmap.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+Local Open Scope schedule_scope.
 
 (** * Common Prefix
       This file contains the proof of common prefix property. 

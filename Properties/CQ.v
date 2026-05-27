@@ -22,6 +22,7 @@ Open Scope fmap.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+Local Open Scope schedule_scope.
 
 (** * Chain Quality
       This file contains the proof of chain quality. 

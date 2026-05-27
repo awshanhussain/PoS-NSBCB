@@ -22,6 +22,6 @@ Properties/CG.v
 Properties/CQ.v
 Properties/CP.v
 
-PoSproof/theories/Rstruct_topology.v
-PoSproof/theories/sampling.v
-PoSproof/theories/PoSMain.v
+Properties/Rstruct_topology.v
+Properties/sampling.v
+Properties/PoSMain.v

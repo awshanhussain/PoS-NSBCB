@@ -91,10 +91,13 @@ Definition inc_round (N : GlobalState) : GlobalState :=
 
 (** ** Definition: Related states **)
 
+Declare Scope schedule_scope.
+Delimit Scope schedule_scope with sched.
+
 Reserved Notation "A ⤳ B" (at level 80, no associativity).
 
-Notation "N '@' p" := (progress N = p) (at level 20).
-
+Notation "N '@' p" := (progress N = p) (at level 60) : schedule_scope.
+Local Open Scope schedule_scope.
 Inductive SingleStep: GlobalState -> GlobalState -> Prop :=
 (* Delivering messages to all parties *)
 | Deliver : forall N, N @ Ready -> N ⤳
@@ -114,6 +117,7 @@ where "N ⤳ N'" := (SingleStep N N').
     SingleStep relation **)
 Definition BigStep (N N' : GlobalState) := clos_refl_trans_n1 GlobalState SingleStep N N'.
 
-Notation "N '⇓' N'" := (BigStep N N') (at level 20).
-Notation "N '⇓[' s ']' N'" := (N ⇓ N' /\ (s + t_now N) = (t_now N')) (at level 20).
-Notation "N '⇓^+' N'" := (N ⇓ N' /\ t_now N < t_now N') (at level 20).
+
+Notation "N '⇓' N'" := (BigStep N N') (at level 20) : schedule_scope.
+Notation "N '⇓[' s ']' N'" := (N ⇓ N' /\ (s + t_now N) = (t_now N')) (at level 20) : schedule_scope.
+Notation "N '⇓^+' N'" := (N ⇓ N' /\ t_now N < t_now N') (at level 20) : schedule_scope.
