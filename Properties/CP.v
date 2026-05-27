@@ -364,15 +364,18 @@ Lemma cfb_subset b bp :
 Proof. 
   move=> b'.
   funelim (cfb b bp); try by rewrite -Heqcall. 
-  - rewrite -Heqcall inE inE orbC => /eqP ->.
-      by rewrite mem_head.
-  - rewrite -Heqcall. rewrite inE=> /orP [/eqP ->|].
+  - rewrite inE inE orbC => /eqP ->.
+    rewrite Heq.
+    rewrite orbT //=.
+  -  rewrite inE=> /orP [/eqP ->|].
     + by rewrite inE orbC mem_head. 
-    + by rewrite inE=> /eqP ->; rewrite mem_head. 
-  - rewrite -Heqcall inE -Heq => /orP [/eqP ->| /Hind].
+    + by rewrite inE=> /eqP ->; rewrite mem_head.
+  - rewrite in_nil //=.
+  - rewrite in_nil //=. 
+  - rewrite  inE -Heq => /orP [/eqP ->| /Hind].
     + by rewrite inE mem_head orbC. 
     + rewrite 2!inE=> /or3P  [/eqP ->| |]; [by rewrite mem_head| |]. 
-      * move: (e) => + H. move/eqP: H <- => /esym/findo_mem.
+      * move: (H) => + H2. move/eqP: H2 <- => /esym/findo_mem.
         by rewrite inE orbC inE -orbA orbC => ->. 
       * by move/filter_subset/(subset_cons b)/(subset_cons GenesisBlock). 
 Qed. 
@@ -384,7 +387,7 @@ Proof.
   - move=> _. exists [:: GenesisBlock]. by apply/esym.
   - by rewrite Heqcall eq_refl. 
   - by rewrite Heqcall eq_refl. 
-  - rewrite -Heqcall=> _. by exists [:: b1 & l]. 
+  - move => Hl. by exists [:: b'' & cs]. 
 Qed. 
 
 Lemma perm_cfb b : forall bp bp1,
@@ -396,35 +399,35 @@ Proof.
   - by move/eqP: Heq ->; simp cfb ;rewrite eq_refl.  
   - by simp cfb; rewrite Heq0 /= Heq //. 
   - move=> _ /(perm_findo (fun b' : Block => Blocks.pred b == HashB b')).
-    rewrite e -Heqcall. simp cfb. rewrite Heq1 /= Heq0 /=.
-    case: inspect=> bo. case bo=> //= ? H.
-    by rewrite H. 
-  - move=> no_coll perm. rewrite -Heqcall.
-    have: findo (fun b' : Block => Blocks.pred b == HashB b') bp2 = Some b0.
+    rewrite H . simp cfb. rewrite Heq1 /= Heq0 /=.
+    case: inspect=> bo. case bo=> //= ? H2.
+    by rewrite H2. 
+  - move=> no_coll perm. 
+    have: findo (fun b' : Block => Blocks.pred b == HashB b') bp2 = Some b'.
     { move: (perm_findo (fun b' : Block => Blocks.pred b == HashB b') perm). 
-      rewrite e. case f: findo=> [b'|]//= _.
-      move/findo_pred: (f). move/findo_pred/eqP: (e) => -> /eqP /no_coll -> //=.
-      - by move/esym/findo_mem: (e); move/perm_mem: perm ->. 
+      rewrite H. case f: findo=> [b0|]//= _.
+      move/findo_pred: (f). move/findo_pred/eqP: (H) => -> /eqP /no_coll -> //=.
+      - by move/esym/findo_mem: (H); move/perm_mem: perm ->. 
       - by move/esym/findo_mem: (f). }
-    simp cfb. rewrite Heq2 /= Heq1 /=. case: inspect => [] [] //= b'' H.
-    rewrite H => [] /= [] H'. 
+    simp cfb. rewrite Heq2 /= Heq1 /=. case: inspect => [] [] //= b'' H2.
+    rewrite H2 => [] /= [] H'. 
     suff -> : (cfb b'' [seq x <- bp2 | x != b''] = [::]) by done.  
     rewrite H' -Hind.
     + by rewrite Heq. 
     + by apply/(in_subset2 _ no_coll)/filter_subset. 
     + by apply/perm_filter.  
-  - move=> no_coll perm. rewrite -Heqcall.
-    have: findo (fun b' : Block => Blocks.pred b == HashB b') bp2 = Some b0.
+  - move=> no_coll perm.
+    have: findo (fun b' : Block => Blocks.pred b == HashB b') bp2 = Some b'.
     { move: (perm_findo (fun b' : Block => Blocks.pred b == HashB b') perm). 
-      rewrite e. case f: findo=> [b'|]//= _.
-      move/findo_pred: (f). move/findo_pred/eqP: (e) => -> /eqP /no_coll -> //=.
-      - by move/esym/findo_mem: (e); move/perm_mem: perm ->. 
+      rewrite H. case f: findo=> [b0|]//= _.
+      move/findo_pred: (f). move/findo_pred/eqP: (H) => -> /eqP /no_coll -> //=.
+      - by move/esym/findo_mem: (H); move/perm_mem: perm ->. 
       - by move/esym/findo_mem: (f). }
     simp cfb. rewrite Heq2 /= Heq1 /=.
-    case: inspect => [] [] //= b'' H; last first.
-    { by move: b''; rewrite H. }
-    rewrite H => [] /= [] H' /=. 
-    suff -> : (cfb b'' [seq x <- bp2 | x != b'']  = b1 :: l) by done.  
+    case: inspect => [] [] //= b2 H2; last first.
+    { by move: b2; rewrite H2. }
+    rewrite H2 => [] /= [] H' /=. 
+    suff -> : (cfb b2 [seq x <- bp2 | x != b2]  = b'' :: cs) by done.  
     rewrite H' -Hind.
     + by rewrite Heq. 
     + by apply/(in_subset2 _ no_coll)/filter_subset. 
@@ -439,33 +442,33 @@ Proof.
   - by move/eqP: Heq ->; simp cfb;rewrite eq_refl.
   - by simp cfb; rewrite Heq0 /= Heq //. 
   - move: (mem_undup bp)=> /(mem_findo (fun b' : Block => Blocks.pred b == HashB b')).
-    rewrite e -Heqcall. simp cfb. rewrite Heq1 /= Heq0 /=.
-    case: inspect=> bo. case bo=> //= ? H.
-    by rewrite H. 
+    rewrite H . simp cfb. rewrite Heq1 /= Heq0 /=.
+    case: inspect=> bo. case bo=> //= ? H2.
+    by rewrite H2. 
   - move=> no_coll. 
-    have: findo (fun b' : Block => Blocks.pred b == HashB b') (undup bp) = Some b0.
+    have: findo (fun b' : Block => Blocks.pred b == HashB b') (undup bp) = Some b'.
     { move: (mem_findo (fun b' : Block => Blocks.pred b == HashB b') (mem_undup bp)). 
-      rewrite e. case f: findo=> [b'|]//= _.
-      move/findo_pred: (f). move/findo_pred/eqP: (e) => -> /eqP /no_coll -> //=.
-      - by move/esym/findo_mem: (e).  
+      rewrite H. case f: findo=> [b0|]//= _.
+      move/findo_pred: (f). move/findo_pred/eqP: (H) => -> /eqP /no_coll -> //=.
+      - by move/esym/findo_mem: (H).  
       - by move/esym/findo_mem: (f); rewrite mem_undup. } 
-    rewrite -Heqcall. simp cfb. rewrite Heq2 /= Heq1 /=. 
-    case: inspect => [] [] //= b'' H; last first.
-    rewrite H=> [] [] H'. rewrite filter_undup. 
+    simp cfb. rewrite Heq2 /= Heq1 /=. 
+    case: inspect => [] [] //= b'' H2; last first.
+    rewrite H2=> [] [] H'. rewrite filter_undup. 
     move: Hind Heq. rewrite -H' => <-. 
     + by move->.
     + by apply/(in_subset2 _ no_coll)/filter_subset. 
   - move=> no_coll. 
-    have: findo (fun b' : Block => Blocks.pred b == HashB b') (undup bp) = Some b0.
+    have: findo (fun b' : Block => Blocks.pred b == HashB b') (undup bp) = Some b'.
     { move: (mem_findo (fun b' : Block => Blocks.pred b == HashB b') (mem_undup bp)). 
-      rewrite e. case f: findo=> [b'|]//= _.
-      move/findo_pred: (f). move/findo_pred/eqP: (e) => -> /eqP /no_coll -> //=.
-      - by move/esym/findo_mem: (e).  
+      rewrite H. case f: findo=> [b0|]//= _.
+      move/findo_pred: (f). move/findo_pred/eqP: (H) => -> /eqP /no_coll -> //=.
+      - by move/esym/findo_mem: (H).  
       - by move/esym/findo_mem: (f); rewrite mem_undup. } 
-    rewrite -Heqcall. simp cfb. rewrite Heq2 /= Heq1 /=. 
-    case: inspect => [] [] //= b'' H //=; last first.
-    { by move: b''; rewrite H. }
-    rewrite H=> [] [] H'. rewrite filter_undup. 
+    simp cfb. rewrite Heq2 /= Heq1 /=. 
+    case: inspect => [] [] //= b2 H2 //=; last first.
+    { by move: b2; rewrite H2. }
+    rewrite H2=> [] [] H'. rewrite filter_undup. 
     move: Hind Heq. rewrite -H' => <-. 
     + by move->. 
     + by apply/(in_subset2 _ no_coll)/filter_subset. 
@@ -490,12 +493,12 @@ Lemma cfb_non_empty_subset b bp1 : forall bp2,
     cfb b bp1 = cfb b bp2. 
 Proof.   
   funelim (cfb b bp1); move=> bp2 coll sub nnil.
-  - by rewrite -Heqcall; simp cfb; rewrite Heq.   
-  - by rewrite -Heqcall; simp cfb; rewrite Heq0 /= Heq.   
-  - by move: nnil; rewrite -Heqcall.
-  - by move: nnil; rewrite -Heqcall.
-  - have: findo (fun b' : Block => Blocks.pred b == HashB b') bp2 = Some b0.
-    { move/esym/findo_mem/sub : (e). move: coll. move/findo_pred: (e). 
+  - simp cfb; rewrite Heq //=.
+  - simp cfb . rewrite Heq0 //= Heq //=.      
+  - by move: nnil.
+  - by move: nnil. 
+  - have: findo (fun b' : Block => Blocks.pred b == HashB b') bp2 = Some b'.
+    { move/esym/findo_mem/sub : (H). move: coll. move/findo_pred: (H). 
       clear. move=> predb0. elim: bp2=> //= > IH coll.
       rewrite inE=> /orP [/eqP <-|]; [by rewrite predb0|]. 
       case eq: (_==_)=> //= .
@@ -504,10 +507,10 @@ Proof.
         + by rewrite inE orbC bin.
         + by move/eqP: predb0 <-; move/eqP: eq <-.
       - by apply/IH/(in_subset2 _ coll)/subset_cons. }
-    rewrite -Heqcall. simp cfb. rewrite Heq2 /= Heq1 /=.
-    case: inspect => [] [] //= b'' H //=; last first.
-    { by move: b''; rewrite H. }
-    rewrite H=> [] [] H'. 
+    simp cfb. rewrite Heq2 /= Heq1 /=.
+    case: inspect => [] [] //= b2 H2 //=; last first.
+    { by move: b2; rewrite H2. }
+    rewrite H2=> [] [] H'. 
     move: Hind (Heq). rewrite -H' => <-. 
     - by move->. 
     - by apply/(in_subset2 _ coll)/filter_subset. 
@@ -541,7 +544,7 @@ Lemma cfb_valid_chain  b bp c :
   cfb b bp = b :: c.
 Proof.
   move=> coll vc sub.
-  funelim (cfb b bp); rewrite -Heqcall.
+  funelim (cfb b bp).
   - by move/eqP: Heq vc -> =>  /only_gb_valid ->.
   - have gbin: GenesisBlock \in bp. 
     { move: vc sub.
@@ -558,38 +561,38 @@ Proof.
   - move: sub vc.
     case ceq: c=> [|b' c'] //=; first by move=> _ /valid_chain_block_gb/eqP; rewrite Heq1. 
     rewrite valid_chain_ext=> sub /and3P [] ?. 
-    rewrite /linked => H. 
+    rewrite /linked => H2. 
     move: (findo_has (fun b' : Block => Blocks.pred b == HashB b') bp).
-    rewrite e /=. 
+    rewrite H /=. 
     move/esym/hasP => /=. rewrite /(~_) => H'. exfalso. apply/H'=> //.
     exists b'; by [apply/sub; rewrite mem_head|]. 
   - move: sub vc.
-    case ceq: c=> [| b' c']//=; first by move=> _ /valid_chain_block_gb/eqP; rewrite Heq2.
+    case ceq: c=> [| b0 c']//=; first by move=> _ /valid_chain_block_gb/eqP; rewrite Heq2.
     move=> sub. rewrite valid_chain_ext /linked=> /and4P [] corr link dec vc.
     have b0b'eq: b0 = b'.
     { apply/coll.
-      + by apply/findo_mem/esym/e. 
-      + by apply/sub; rewrite mem_head. 
-      + by move/eqP: link <-  => {Heq0}; move/findo_pred/eqP: e ->. }
+      + apply /sub. rewrite in_cons. apply /orP. left. rewrite //=.  
+      + apply/findo_mem/esym/H.
+      + by move/eqP: link <-  => {Heq0}; move/findo_pred/eqP: H ->. }
     move: Heq. rewrite (@Hind c') //.
     + by apply/(in_subset2 _ coll)/mem_subseq/filter_subseq.
-    + by rewrite b0b'eq. 
-    + rewrite b0b'eq=> b'' b''in. rewrite mem_filter sub; last by rewrite inE orbC b''in.  
+    + by rewrite -b0b'eq. 
+    + rewrite -b0b'eq=> b'' b''in. rewrite mem_filter sub; last by rewrite inE orbC b''in.  
       rewrite andbC //=. apply/(in_not_in b''in).
       by move/uniq_valid_chain: vc => /andP []. 
   - move: sub vc.
-    case ceq: c=> [| b' c']//=; first by move=> _ /valid_chain_block_gb/eqP; rewrite Heq2.
+    case ceq: c=> [| b0 c']//=; first by move=> _ /valid_chain_block_gb/eqP; rewrite Heq2.
     move=> sub. rewrite valid_chain_ext /linked=> /and4P [] corr link dec vc.
     have b0b'eq: b0 = b'.
     { apply/coll.
-      + by apply/findo_mem/esym/e. 
-      + by apply/sub; rewrite mem_head. 
-      + by move/eqP: link <-  => {Heq0}; move/findo_pred/eqP: e ->. }
-    apply/f_equal. rewrite -Heq -b0b'eq. apply/Hind. 
+      + apply /sub. rewrite in_cons. apply /orP. left. rewrite //=.  
+      + apply/findo_mem/esym/H.
+      + by move/eqP: link <-  => {Heq0}; move/findo_pred/eqP: H ->. }
+    apply/f_equal. rewrite -Heq b0b'eq. apply/Hind. 
     + by apply/(in_subset2 _ coll)/mem_subseq/filter_subseq.
-    + by rewrite b0b'eq.
-    + rewrite b0b'eq=> b'' b''in. rewrite mem_filter sub; last by rewrite inE orbC b''in.  
-      rewrite andbC //=. apply/(in_not_in b''in).
+    + by rewrite -b0b'eq.
+    + rewrite -b0b'eq=> b1 b1in. rewrite mem_filter sub; last by rewrite inE orbC b1in.  
+      rewrite andbC //=. apply/(in_not_in b1in).
         by move/uniq_valid_chain: vc => /andP [].
 Qed.
 
@@ -600,7 +603,7 @@ Lemma cfb_valid_chain'  b bp c :
   cfb b bp = b :: c.
 Proof.
   move=> coll vc sub.
-  funelim (cfb b bp); rewrite -Heqcall.
+  funelim (cfb b bp).
   - by move/eqP: Heq vc -> =>  /only_gb_valid ->.
   - apply/f_equal. 
     move: sub vc. case: c=> //= [_|].
@@ -612,45 +615,47 @@ Proof.
   - move: sub vc.
     case ceq: c=> [|b' c'] //=; first by move=> _ /valid_chain_block_gb/eqP; rewrite Heq1. 
     rewrite valid_chain_ext=> sub /and3P [] ?. 
-    rewrite /linked => H. 
+    rewrite /linked => H2. 
     move: (findo_has (fun b' : Block => Blocks.pred b == HashB b') bp).
-    rewrite e /=. 
+    rewrite H /=. 
     move/esym/hasP => /=. rewrite /(~_) => H'. exfalso. apply/H'=> //.
     exists b'; try done. move/(_ b'): sub. rewrite mem_head inE => /trueI/orP [/eqP eqb'| //].
-      by move/eqP: H Heq0 ->; rewrite eqb' eq_refl.
+      by move/eqP: H2 Heq0 ->; rewrite eqb' eq_refl.
   - move: sub vc.
-    case ceq: c=> [| b' c']//=; first by move=> _ /valid_chain_block_gb/eqP; rewrite Heq2.
+    case ceq: c=> [| b0 c']//=; first by move=> _ /valid_chain_block_gb/eqP; rewrite Heq2.
     move=> sub. rewrite valid_chain_ext /linked=> /and4P [] corr link dec vc.
     have b0b'eq: b0 = b'.
     { apply/coll.
+      + by apply/sub; rewrite mem_head.
       + rewrite inE. apply/orP. constructor 2.
-          by apply/findo_mem/esym/e. 
-      + by apply/sub; rewrite mem_head. 
-      + by move/eqP: link <-  => {Heq0}; move/findo_pred/eqP: e ->. }
+          by apply/findo_mem/esym/H. 
+       
+      + by move/eqP: link <-  => {Heq0}; move/findo_pred/eqP: H ->. }
     move: Heq. rewrite (@Hind c') //.
     + apply/(in_subset2 _ coll)/mem_subseq=> /=. rewrite eq_refl.
         by apply/filter_subseq.
-    + by rewrite b0b'eq. 
-    + rewrite b0b'eq=> b'' b''in. rewrite inE mem_filter andbC //=.
-      move/(_ b''): sub. rewrite inE orbC b''in inE /= => /trueI/orP [-> | ->] //=.
-      apply/orP; right. apply/(in_not_in b''in).
+    + by rewrite -b0b'eq. 
+    + rewrite -b0b'eq=> b1 b1in. rewrite inE mem_filter andbC //=.
+      move/(_ b1): sub. rewrite inE orbC b1in inE /= => /trueI/orP [-> | ->] //=.
+      apply/orP; right. apply/(in_not_in b1in).
         by move/uniq_valid_chain: vc => /andP []. 
   - move: sub vc.
-    case ceq: c=> [| b' c']//=; first by move=> _ /valid_chain_block_gb/eqP; rewrite Heq2.
+    case ceq: c=> [| b0 c']//=; first by move=> _ /valid_chain_block_gb/eqP; rewrite Heq2.
     move=> sub. rewrite valid_chain_ext /linked=> /and4P [] corr link dec vc.
     have b0b'eq: b0 = b'.
     { apply/coll.
+      + by apply/sub; rewrite mem_head.
       + rewrite inE. apply/orP. constructor 2.
-          by apply/findo_mem/esym/e. 
-      + by apply/sub; rewrite mem_head. 
-      + by move/eqP: link <-  => {Heq0}; move/findo_pred/eqP: e ->. }
-    apply/f_equal. rewrite -Heq -b0b'eq. apply/Hind. 
+          by apply/findo_mem/esym/H. 
+       
+      + by move/eqP: link <-  => {Heq0}; move/findo_pred/eqP: H ->. }
+    apply/f_equal. rewrite -Heq b0b'eq. apply/Hind. 
     + apply/(in_subset2 _ coll)/mem_subseq=> /=. rewrite eq_refl.
         by apply/filter_subseq.
-    + by rewrite b0b'eq.
-    + rewrite b0b'eq=> b'' b''in. rewrite inE mem_filter andbC //=.
-      move/(_ b''): sub. rewrite inE orbC b''in inE /= => /trueI/orP [-> | ->] //=.
-      apply/orP; right. apply/(in_not_in b''in).
+    + by rewrite -b0b'eq.
+    + rewrite -b0b'eq=> b1 b1in. rewrite inE mem_filter andbC //=.
+      move/(_ b1): sub. rewrite inE orbC b1in inE /= => /trueI/orP [-> | ->] //=.
+      apply/orP; right. apply/(in_not_in b1in).
         by move/uniq_valid_chain: vc => /andP []. 
 Qed. 
 

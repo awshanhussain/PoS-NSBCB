@@ -21,3 +21,7 @@ Properties/TreeChain.v
 Properties/CG.v
 Properties/CQ.v
 Properties/CP.v
+
+PoSproof/theories/Rstruct_topology.v
+PoSproof/theories/sampling.v
+PoSproof/theories/PoSMain.v

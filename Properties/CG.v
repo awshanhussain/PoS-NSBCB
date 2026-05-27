@@ -1670,7 +1670,7 @@ Proof.
     { rewrite subSn.
       - by rewrite -add1n addnC. 
       - by apply/monotone_time/H2. } 
-    rewrite Ht iota_add filter_cat size_cat /=.  
+    rewrite Ht iotaD filter_cat size_cat /=.  
     set sl' := (t_now N + (t_now N' - t_now N)). 
     set NN' := |_|. case IHH: (0 < NN'); last first.
     + move: IHH. rewrite lt0n /(_ != _).
@@ -1786,7 +1786,7 @@ Proof.
   rewrite /nat_range =>/andP [] H1 H2. 
   have: c - a = (b - a) + (c - b).
   { by rewrite addnBA // addnC addnBA // subnAC -addnBA // subnn addn0. }
-  move->. rewrite iota_add.  
+  move->. rewrite iotaD.  
   suff: (a + (b - a)) = b by move->. 
   by rewrite addnC subnK. 
 Qed. 
@@ -1847,7 +1847,7 @@ Proof.
             - by move: ls => /first_lucky_slot_is_lucky ->.  
             - by case: (lucky_slot sl'). }
           rewrite /a /= /p_slots_range /nat_range.
-          rewrite t_N'' subSn // -addn1 iota_add filter_cat size_cat.
+          rewrite t_N'' subSn // -addn1 iotaD filter_cat size_cat.
           move=> /=. rewrite subnKC //. move: ls => /first_lucky_slot_is_lucky -> /=.
           rewrite addn1=> H. apply/eqP. rewrite eqSS. apply/eqP.
           have mem_i: all (fun sl' => sl' < sl)
