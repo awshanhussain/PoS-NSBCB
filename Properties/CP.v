@@ -2166,7 +2166,7 @@ Proof.
     have ->: (| c1 ++ cs1 ++ b' :: cs2 |) = (| (b' :: cs2) ++ cs1 ++ c1  |).
     { rewrite !size_cat addnA addnC.
       by apply/f_equal; rewrite addnC. }
-    rewrite !map_cat !size_cat !iota_add !rev_cat -catA -catA=> /eqP.
+    rewrite !map_cat !size_cat !iotaD !rev_cat -catA -catA=> /eqP.
     rewrite eqseq_cat=> [/andP []/eqP c1_io |]; last by rewrite size_map size_rev size_iota.
     rewrite eqseq_cat=> [/andP []/eqP cs1_io /eqP cs2_io|]; last by rewrite size_map size_rev size_iota.
     (* Establishing positions in c2 *)
@@ -2177,7 +2177,7 @@ Proof.
     have ->: (| c2 ++ cs1 ++ b' :: cs2 |) = (| (b' :: cs2) ++ cs1 ++ c2  |).
     { rewrite !size_cat addnA addnC.
       by apply/f_equal; rewrite addnC. }
-    rewrite !map_cat !size_cat !iota_add !rev_cat -catA => /eqP.
+    rewrite !map_cat !size_cat !iotaD !rev_cat -catA => /eqP.
     rewrite eqseq_cat=> [/andP []/eqP c2_io |]; last by rewrite size_map size_rev size_iota.
     (* Moving forward *)
     rewrite mem_cat cs1_io mem_rev mem_iota add1n.

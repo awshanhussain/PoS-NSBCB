@@ -3,6 +3,7 @@ From mathcomp Require Import
 
 From AUChain Require Import
      Parameters.
+From HB Require Import structures.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -38,9 +39,9 @@ Proof.
   by constructor.
 Qed.
 
+HB.instance Definition _ :=  hasDecEq.Build Block eq_blockP.
+
 (* Canonial structures for block *)
-Canonical Block_eqMixin := Eval hnf in EqMixin eq_blockP.
-Canonical Block_eqType := Eval hnf in EqType Block Block_eqMixin.
 
 (** Parameters for block *)
 Parameter GenesisBlock : Block.

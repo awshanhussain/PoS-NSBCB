@@ -9,8 +9,8 @@ From AUChain Require Import
      MessageTuple
      BlockTree
      LocalState.
-
-From RecordUpdate Require Import RecordSet. 
+From HB Require Import structures.
+From RecordUpdate Require Import RecordUpdate. 
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -25,8 +25,7 @@ Unset Printing Implicit Defensive.
 (** The StateMap which is supposed to keep track of parties.
     The parties are existentially quantified over their treeType. *)
 
-Definition StateMap := finMap [choiceType of Party] LocalState.
-
+Definition StateMap := {fmap Party -> LocalState}.
 Definition state_map0 : StateMap := fmap0.
 Open Scope fmap.
 
@@ -52,8 +51,8 @@ Definition honest_eq h h' :=
 Lemma honest_eqP : Equality.axiom honest_eq.
 Proof. by move=> [] []; apply/(iffP idP). Qed. 
 
-Canonical Honest_eqMixin := Eval hnf in EqMixin honest_eqP.
-Canonical Honesty_eqType := Eval hnf in EqType Honesty Honest_eqMixin.
+
+HB.instance Definition Honest_eqMixin := hasDecEq.Build Honesty honest_eqP.
 
 Inductive Progress : Set :=
 | Ready
@@ -71,8 +70,8 @@ Definition progress_eq p p' :=
 Lemma progress_eqP : Equality.axiom progress_eq.
 Proof. by move=> [] []; apply/(iffP idP). Qed. 
 
-Canonical Progress_eqMixin := Eval hnf in EqMixin progress_eqP.
-Canonical Progress_eqType := Eval hnf in EqType Progress Progress_eqMixin.
+HB.instance Definition Progress_eqMixin := hasDecEq.Build Progress progress_eqP.
+
 
 Parameter AdversarialState : Type.
 Parameter AdvState0 : AdversarialState.

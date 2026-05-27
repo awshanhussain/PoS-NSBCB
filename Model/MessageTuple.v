@@ -4,8 +4,8 @@ From mathcomp Require Import
 From AUChain Require Import
      Messages
      Parameters.
-
-From RecordUpdate Require Import RecordSet. 
+From HB Require Import structures.
+From RecordUpdate Require Import RecordUpdate. 
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -41,8 +41,8 @@ Proof.
   by constructor.
 Qed.
 
-Canonical MessageTuple_eqMixin := Eval hnf in EqMixin eq_msg_tupleP.
-Canonical MessageTuple_eqType := Eval hnf in EqType MessageTuple MessageTuple_eqMixin.
+
+HB.instance Definition MessageTuple_eqMixin := hasDecEq.Build MessageTuple eq_msg_tupleP.
 
 End MessageTupleEq.
 Export MessageTupleEq.

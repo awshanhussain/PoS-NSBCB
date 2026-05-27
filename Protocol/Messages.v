@@ -1,6 +1,7 @@
 From mathcomp Require Import
      all_ssreflect.
-
+From HB Require Import
+     structures.
 From AUChain Require Import
      Parameters
      Blocks.
@@ -27,9 +28,8 @@ Definition eq_msg a b :=
 Lemma eq_msgP : Equality.axiom eq_msg.
 Proof. by move=> /= [] ? [] ? /=; apply/(iffP idP)=> [/eqP ->| [] -> ] //. Qed. 
 
-Canonical Msg_eqMixin := Eval hnf in EqMixin eq_msgP.
-Canonical Msg_eqType := Eval hnf in EqType Message Msg_eqMixin.
 
+HB.instance Definition _ := hasDecEq.Build Message eq_msgP.
 End MsgEq.
 
 Export MsgEq.

@@ -122,7 +122,7 @@ Definition adv_slot_gen ps sl : bool :=
   has (fun p => Winner p sl && is_corrupt p) ps. 
 
 Definition adv_slot sl : bool :=
-  adv_slot_gen (enum [finType of Party]) sl. 
+  adv_slot_gen (enum Party) sl. 
 
 Definition adv_slot_w N :=
   adv_slot_gen InitParties (t_now N).
@@ -1166,7 +1166,7 @@ set N1_B := mkGlobalState _ _ _ _ _ _ _.
           by apply/subset_cons. 
 Qed. 
 
-Lemma party_party : forall (p : Party), p \in enum [finType of Party].
+Lemma party_party : forall (p : Party), p \in enum Party.
   by move=> p; rewrite mem_enum.
 Qed.
 
@@ -1338,7 +1338,7 @@ Proof.
             move/(order_path_min lt_slots_trans)/allP.
             rewrite -/(cat _ _)=> /(_ b_i').
             by rewrite mem_cat orbC mem_head => /trueI. }
-      rewrite iota_add filter_cat size_cat -addnA leq_add2l => /=.
+      rewrite iotaD filter_cat size_cat -addnA leq_add2l => /=.
       case: (adv_slot) => //=.
       - by rewrite addnBA // addnC addn1 subn1 /= leqnn. 
       - by rewrite add0n subn1 leq_pred. }
