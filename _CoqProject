@@ -24,4 +24,5 @@ Properties/CP.v
 
 Properties/Rstruct_topology.v
 Properties/sampling.v
+Properties/additional_lemmas.v
 Properties/PoSMain.v

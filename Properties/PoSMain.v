@@ -13,6 +13,7 @@
   From mathcomp Require Import lebesgue_integral kernel probability.
   From mathcomp Require Import hoelder unstable.
   From mathcomp Require Import archimedean.
+  
   From HB Require Import structures.
   From AUChain Require Import sampling.
   From AUChain Require Import
@@ -29,7 +30,8 @@
      MemEq
      SsrFacts
      TreeChain
-     CG.
+     CG
+     additional_lemmas.
 
   Import Order.TTheory GRing.Theory Num.Def Num.Theory.
   Import numFieldTopology.Exports numFieldNormedType.Exports.
@@ -48,7 +50,7 @@
 
 
 
-  Section chain_growth.
+Section pos_proof.
     Local Open Scope ereal_scope.
 
     Local Open Scope classical_set_scope.
@@ -84,9 +86,9 @@
     Hypothesis p2_honest : is_honest p2.
     Variable (l1 l2 : LocalState).
     Hypothesis l1_p1_state : has_state p1 N l1.
-    Hypothesis l2_p2_state : has_state p1 N' l2.
-    
-    
+    Hypothesis l2_p2_state : has_state p2 N' l2.
+    Locate "||".
+    Hypothesis LS_r_eq_slotrange : forall r,  (LS_r r  = | lucky_slots_range (t_now N) (t_now N' - 1) |%:R)%N.
     
     
     
@@ -130,26 +132,7 @@
       }
       rewrite Hsame.
       apply probability_setC.
-      rewrite /A.
-      have HfullandA:
-      setT `&` A = A.
-      {
-        apply/seteqP.
-        split.
-        - move => i Hi.
-          rewrite /A /=.
-          rewrite /A /= in Hi.
-          destruct Hi.
-          apply/H0.
-        move => i Hi.
-        rewrite /A /= in Hi.
-        rewrite /A /=.
-        split.
-          - apply/I.
-        apply Hi.
-      }
-      rewrite -/A.
-      rewrite -HfullandA.
+      rewrite -(ST_Set A).
       apply: (measurable_fun_le (D := setT) (f := X') (g := fun _ => B)) .
       - apply: measurableT.
       - by rewrite //=.
@@ -213,6 +196,116 @@
       by apply : leeD2l H1.
     Qed.
 
+  Definition Chain_growth_ls_Good_event :=
+    let X' := bool_trial_value LS in 
+    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    [set r | ((1 - deltaLs) * fine mu < X' r)%R].
+
+  Definition chain_growth_parties_event (w : nat)  :=
+  let X' := bool_trial_value LS in 
+  [set r : nbre_de_slots.-tuple T | ((|bestChain (t_now N - 1)%N (tree l1)| + w)%N <= |bestChain (t_now N' - 1)%N (tree l2)|)%N].
+  
+
+  Lemma Good_Ls_implies_chain_growth w :
+  let X' := bool_trial_value LS in
+  let mu := 'E_(\X_nbre_de_slots P)[X'] in
+  w%:R <= (1 - deltaLs) * fine mu
+  -> 
+  (forall r , Chain_growth_ls_Good_event r-> chain_growth_parties_event w r).
+  Proof.
+    move => X' mu H1 r H2.
+    rewrite /chain_growth_parties_event //=.
+    apply chain_growth_parties with (p1 := p1) (p2 := p2) ; try easy.
+    rewrite /Chain_growth_ls_Good_event in H2.
+    rewrite -(ler_nat R).
+    rewrite -(LS_r_eq_slotrange r).
+    rewrite //=  in H2.
+    rewrite -/mu in H2.
+    rewrite -/LS_r in H2.
+    apply ltW in H2.
+    apply (le_trans H1).
+    apply H2.
+  Qed.
+  
+    
+
+  Lemma probability_implication (w : nat) :
+  let X' := bool_trial_value LS in
+  let mu := 'E_(\X_nbre_de_slots P)[X'] in
+  w%:R <= (1 - deltaLs) * fine mu
+  ->
+  let X' := bool_trial_value LS in
+  let mu := 'E_(\X_nbre_de_slots P)[X'] in
+  ((\X_nbre_de_slots P) Chain_growth_ls_Good_event<= (\X_nbre_de_slots P) (chain_growth_parties_event w))%E .
+  Proof.
+  move => X' mu H1.
+  set B := ((1 - deltaLs) * fine mu)%R.
+  apply: le_measure.
+  - 
+    rewrite /Chain_growth_ls_Good_event -/X'.
+    rewrite -/B.
+    have Hinvertedle:
+    [set r | (B < X' r)%R] = ~` [set r | (X' r <= B)%R].
+    {
+      apply /seteqP.
+      split.
+      - move => r .
+        rewrite //=.
+        rewrite ltNge.
+        move /negP  => H.
+        apply H.
+      - move => r.
+        rewrite //=.
+        rewrite ltNge.
+        move /negP => H.
+        apply H.
+    }
+    rewrite Hinvertedle.
+    
+    have Hle :
+    (measurable_structure.measure_tuple_display d).-measurable [set r | (X' r <= B)%R] .
+    {
+      rewrite -(ST_Set [set r | X' r <= B]).
+      apply (measurable_fun_le (D := setT) (f := X') (g := fun _ => B)); rewrite //=.
+    }
+    rewrite //=.
+    rewrite inE.
+    apply : measurableC.
+    apply Hle.
+  
+  - rewrite /chain_growth_parties_event.
+    case Hcmp : (((|bestChain (t_now N - 1)%N (tree l1)| + w)%N <= |bestChain (t_now N' - 1)%N (tree l2)|)%N).
+
+    + rewrite //=.
+      rewrite inE //=.
+      rewrite setT_def.
+      apply /measurableT.
+    +  rewrite set0_def inE.
+      apply /measurable0.
+      
+  move =>r.
+  apply Good_Ls_implies_chain_growth.
+  apply H1.
+  Qed.
+
+  Theorem Chernoff_bound_chain_growth_parties_even (w:nat): 
+  let X' := bool_trial_value LS in
+  let mu := 'E_(\X_nbre_de_slots P)[X'] in
+  w%:R <= (1 - deltaLs) * fine mu 
+  ->
+  let X' := bool_trial_value LS in
+  let mu := 'E_(\X_nbre_de_slots P)[X'] in
+  (
+  ((1%R)%:E - (expR (-(fine mu * deltaLs ^+ 2) / 2)%R)%:E)%E
+  <= 
+  ((\X_nbre_de_slots P) (chain_growth_parties_event w))%E
+  )%E.
+  Proof.
+    move => X' mu H.
+    apply (le_trans chain_growth_bound).
+    apply (probability_implication H).
+  Qed.  
+     
 
 
 
@@ -251,26 +344,7 @@
       }
       rewrite Hsame.
       apply probability_setC.
-      rewrite /A.
-      have HfullandA:
-      setT `&` A = A.
-      {
-        apply/seteqP.
-        split.
-        - move => i Hi.
-          rewrite /A /=.
-          rewrite /A /= in Hi.
-          destruct Hi.
-          apply/H0.
-        move => i Hi.
-        rewrite /A /= in Hi.
-        rewrite /A /=.
-        split.
-          - apply/I.
-        apply Hi.
-      }
-      rewrite -/A.
-      rewrite -HfullandA.
+      rewrite -(ST_Set A).
       apply: (measurable_fun_le (D := setT) (f := X') (g := fun _ => B)) .
       - apply: measurableT.
       - by rewrite //=.
@@ -366,26 +440,7 @@
       }
       rewrite Hsame.
       apply probability_setC.
-      rewrite /A.
-      have HfullandA:
-      setT `&` A = A.
-      {
-        apply/seteqP.
-        split.
-        - move => i Hi.
-          rewrite /A /=.
-          rewrite /A /= in Hi.
-          destruct Hi.
-          apply/H0.
-        move => i Hi.
-        rewrite /A /= in Hi.
-        rewrite /A /=.
-        split.
-          - apply/I.
-        apply Hi.
-      }
-      rewrite -/A.
-      rewrite -HfullandA.
+      rewrite -(ST_Set A).
       apply: (measurable_fun_le (D := setT) (f := fun _ => B) (g :=X' )) .
       - apply: measurableT.
       - by rewrite //=.
@@ -509,7 +564,7 @@ Lemma epsilon_condition_CP :
   Qed.
     
 
-
+End pos_proof.
 
 
       
