@@ -97,5 +97,12 @@
         apply H.
     Qed.
 
+    Lemma set_gt_as_compl_le (X : I -> R) (B : R) : 
+    [set r : I | (B < X r)%R] = [set r : I | ~~ (B >= X r)%R].
+    Proof.
+        apply /seteqP.
+        split ; move => r //= ; by rewrite -ltNge.
+    Qed.
+
 End set_lemmas.
 

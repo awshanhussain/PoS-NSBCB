@@ -156,20 +156,7 @@ Section pos_proof.
     set X' := bool_trial_value LS.
     set mu := 'E_(\X_nbre_de_slots P)[X'].
     set B := ((1 - deltaLs) * fine mu)%R.
-    have Hset :
-    [set i | B < X' i]%R =
-    [set i | ~~ (X' i <= B)%R].
-    {
-      rewrite seteqP.
-      split.
-      - move  => i Hn /=.
-        rewrite -ltNge.
-        apply Hn.
-      move => i Hn /=.
-      rewrite /= -ltNge in Hn.
-      apply Hn.
-    }
-    by rewrite Hset.
+    by rewrite set_gt_as_compl_le.
   Qed.
 
 
@@ -303,7 +290,7 @@ Section pos_proof.
   Proof.
     move => X' mu H.
     apply (le_trans chain_growth_bound).
-    apply (probability_implication H).
+    apply (probability_implication  H).
   Qed.  
      
 
@@ -361,24 +348,9 @@ Section pos_proof.
     (((1%R)%:E - 
       (\X_nbre_de_slots P) [set i | X' i <= (1 - deltaSs) * fine mu ]%R))%E.
     Proof.
+    move => X' mu.
     rewrite -complementary_specialized_SS /=.
-    set X' := bool_trial_value SS.
-    set mu := 'E_(\X_nbre_de_slots P)[X'].
-    set B := ((1 - deltaSs) * fine mu)%R.
-    have Hset :
-    [set i | B < X' i]%R =
-    [set i | ~~ (X' i <= B)%R].
-    {
-      rewrite seteqP.
-      split.
-      - move  => i Hn /=.
-        rewrite -ltNge.
-        apply Hn.
-      move => i Hn /=.
-      rewrite /= -ltNge in Hn.
-      apply Hn.
-    }
-    by rewrite Hset.
+    by rewrite -(set_gt_as_compl_le X' ((1 - deltaSs) * fine mu)).
   Qed.
 
       
@@ -519,13 +491,11 @@ Lemma SS_gt_2AS :
       have H112T :
       AS_r r *+ 2< ((1 + deltaAs) * fine muAS) *+ 2.
       {
-        Search "ltr_pmul2l".
         rewrite  ltr_wpMn2r.
         - rewrite //=.
         - rewrite //=.
         apply H11.
       }
-      Print lt_trans.
       apply: (lt_trans H112T).
       apply: (lt_trans H1).
       apply H12.
@@ -551,7 +521,6 @@ Lemma epsilon_condition_CP :
     rewrite mulrC.
     rewrite mulrC.
     rewrite ltrBlDr.
-    About mul1r.
     rewrite mul1r.
     rewrite (addrC epsilon). 
     rewrite -mulrA.
@@ -564,7 +533,7 @@ Lemma epsilon_condition_CP :
   Qed.
     
 
-End pos_proof.
+End pos_proof.  
 
 
       
