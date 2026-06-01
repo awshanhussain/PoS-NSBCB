@@ -50,18 +50,20 @@
   Local Open Scope ring_scope.
   Local Open Scope schedule_scope.
   Section set_lemmas.
-    Variable (I : Type).
-    Variable (R : realType).
-    Lemma ST_Set :  forall (s : set I) , setT `&` s = s.
+    Variable (n : nat).
+    Variables (R : realType).
+    Context {d} (T : measurableType d)  (P : probability T R). 
+    Variable (NT : n.-tuple T).
+    Lemma ST_Set :  forall {I : Type} (s : set I) , setT `&` s = s.
     Proof.
-        move => s.
+        move => I s .
         apply /seteqP.
         split;move => i Hi.
         apply Hi.
         rewrite //=.
     Qed.
     
-    Lemma setT_def : ([set _ | true] : set I) = setT.
+    Lemma setT_def {I : Type} : ([set _ | true] : set I) = setT.
     Proof.
         apply/seteqP.
         split.
@@ -70,7 +72,7 @@
     Qed.
 
 
-    Lemma set0_def : ([set _ | false] : set I) = set0.
+    Lemma set0_def {I : Type} : ([set _ | false] : set I) = set0.
     Proof.
         apply/seteqP.
         split.
@@ -79,10 +81,10 @@
     Qed.
 
     Lemma set_lt_eq_neg_le : 
-    forall (A B : R),
-    [set r : I | (B < A)%R] = ~` [set r : I | (A <= B)%R].
+    forall (X : (n.-tuple T) -> R) (B : R),
+    [set r  | (B < X r)%R] = ~` [set r | (X r <= B)%R].
     Proof.
-        move => A B.
+        move =>  X B .
         apply/seteqP.
         split.
         - move => r.
@@ -97,12 +99,47 @@
         apply H.
     Qed.
 
-    Lemma set_gt_as_compl_le (X : I -> R) (B : R) : 
+    Lemma set_le_eq_neg_le : 
+    forall (X : (n.-tuple T) -> R) (B : R),
+    [set r | ~~ (X r <= B)%R] = ~` [set r | (X r <= B)%R].
+    Proof.
+        move =>  X B .
+        apply /seteqP.
+        split.
+        - move => i Hi.
+          rewrite //= in Hi.
+          rewrite //=.
+          move /negP in Hi.
+          exact : Hi.
+        move => i Hi.
+        rewrite //=.
+        rewrite //= in Hi.
+        apply /negP.
+        exact : Hi.
+    Qed.
+
+    Lemma set_gt_as_compl_le {I : Type} (X : I -> R) (B : R) : 
     [set r : I | (B < X r)%R] = [set r : I | ~~ (B >= X r)%R].
     Proof.
         apply /seteqP.
         split ; move => r //= ; by rewrite -ltNge.
     Qed.
 
+
+    Lemma complementary_specialized_le (Q : probability T R) (X : (n.-tuple T) -> R) (B : R) (Hm : measurable_fun setT X):
+    
+    (\X_n Q) [set i | ~~ (X i <= B)%R]%R
+    =
+    (((1%R)%:E - (\X_n Q) [set i | X i <= B]%R))%E.
+    Proof.
+        rewrite (set_le_eq_neg_le X B) .
+        apply probability_setC.
+        rewrite -(ST_Set ([set i | X i <= B])).
+        apply (measurable_fun_le (D := setT) (f := X) (g := fun _ => B)).
+        - apply /measurableT.
+        - by rewrite //=.
+        rewrite //=.
+    Qed.
+            
 End set_lemmas.
 

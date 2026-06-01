@@ -59,35 +59,51 @@ Section pos_proof.
     Let R := Rdefinitions.R.
     Context {d} (T : measurableType d)  (P : probability T R). 
 
+    Variable Sc : nat.
+    Hypothesis n_sup_O: (0 < Sc)%nat. 
+
+    (* Probabilities for LuckySlot, SuperSlot and AversarialSlot*)
     Variable pLs pSs pAs : R.
-    Variable nbre_de_slots : nat.
-    Hypothesis n_sup_O: (0 < nbre_de_slots)%nat. 
     Hypothesis pLs01 : (0 <= pLs <= 1)%R.
     Hypothesis pSs01 : (0 <= pSs <= 1)%R.
     Hypothesis pAs01 : (0 <= pAs <= 1)%R.
-    Variable LS : nbre_de_slots.-tuple (bernoulliRV P pLs).
-    Variable SS : nbre_de_slots.-tuple (bernoulliRV P pSs).
-    Variable AS : nbre_de_slots.-tuple (bernoulliRV P pAs).
+    
+    (*tuple of boolean values to model a multiple bernoulli draw*)
+    Variable LS : Sc.-tuple (bernoulliRV P pLs).
+    Variable SS : Sc.-tuple (bernoulliRV P pSs).
+    Variable AS : Sc.-tuple (bernoulliRV P pAs).
+    
+    Definition LS_r := bool_trial_value LS.
+    Definition SS_r := bool_trial_value SS.
+    Definition AS_r := bool_trial_value AS.
+
+    (*Delta assumptions*)
     Variable deltaLs deltaSs deltaAs : R.
     Hypothesis delta_range_Ls : (0 < deltaLs < 1)%R.
     Hypothesis delta_range_Ss : (0 < deltaSs < 1)%R.
     Hypothesis delta_range_As : (0 < deltaAs < 1)%R.
-    Hypothesis lottery_assumption_CP : exists epsilon , (epsilon > 0) -> pSs >= (pAs *+ 2) + epsilon .
-    Hypothesis lottery_assumption_CQ : exists epsilon , (epsilon > 0) -> pLs >= pAs + epsilon.
-    Definition LS_r := bool_trial_value LS.
-    Definition SS_r := bool_trial_value SS.
-    Definition AS_r := bool_trial_value AS.
+
+    (*lottery assumption for CP and CQ bounds*)
+    Hypothesis lottery_assumption_CP : exists epsilon , (epsilon > 0) /\ pSs >= (pAs *+ 2) + epsilon .
+    Hypothesis lottery_assumption_CQ : exists epsilon , (epsilon > 0) /\ pLs >= pAs + epsilon.
+    
+    (*GlobalStates assumptions*)
     Variables (N N' : GlobalState).
     Hypothesis N_from_initial : N0 ⇓ N .
     Hypothesis N_is_ready : N @ Ready.
     Hypothesis N'_from_N :  N ⇓^+ N'.
+
+    (*party assumptions corresponding to CG assumptions for now*)
     Variables (p1 p2 : Party).
     Hypothesis p1_honest : is_honest p1.
     Hypothesis p2_honest : is_honest p2.
+
+    (*LocalState assumption to ling p1 and l1 to N, and p2 and l2 to N'*)
     Variable (l1 l2 : LocalState).
     Hypothesis l1_p1_state : has_state p1 N l1.
     Hypothesis l2_p2_state : has_state p2 N' l2.
-    Locate "||".
+
+    (*Assumption to link the bool_trial_value LS to the amount of lucky slots between N and N'*)
     Hypothesis LS_r_eq_slotrange : forall r,  (LS_r r  = | lucky_slots_range (t_now N) (t_now N' - 1) |%:R)%N.
     
     
@@ -100,43 +116,16 @@ Section pos_proof.
       
     Lemma complementary_specialized_LS : 
     let X' := bool_trial_value LS in
-    let mu := 'E_(\X_nbre_de_slots P)[X'] in
-    (\X_nbre_de_slots P) [set i | ~~ (X' i <= (1 - deltaLs) * fine mu)%R ]%R
+    let mu := 'E_(\X_Sc P)[X'] in
+    (\X_Sc P) [set i | ~~ (X' i <= (1 - deltaLs) * fine mu)%R ]%R
     = 
       let X' := bool_trial_value LS in
-    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    let mu := 'E_(\X_Sc P)[X'] in
     (((1%R)%:E - 
-      (\X_nbre_de_slots P) [set i | X' i <= (1 - deltaLs) * fine mu ]%R))%E.
+      (\X_Sc P) [set i | X' i <= (1 - deltaLs) * fine mu ]%R))%E.
     Proof.
-      rewrite /= .
-      set X' := bool_trial_value LS.
-      set mu := 'E_(\X_nbre_de_slots P)[X'].
-      set B :=  (1 - deltaLs) * fine mu.
-      set A := [set i | X' i <= B ].
-      set Pr := (\X_nbre_de_slots P).
-      have  Hsame :
-      [set i | ~~ (X' i <= B )] = ~` A.
-      {
-      apply/seteqP.
-      split.
-      - move => i Hi.
-        rewrite /A /= .
-        rewrite /= in Hi.
-        move /negP in Hi.
-        apply Hi.
-      move => i Hi.
-      rewrite /A /= in Hi.
-      rewrite /=.
-      apply /negP.
-      apply Hi.
-      }
-      rewrite Hsame.
-      apply probability_setC.
-      rewrite -(ST_Set A).
-      apply: (measurable_fun_le (D := setT) (f := X') (g := fun _ => B)) .
-      - apply: measurableT.
-      - by rewrite //=.
-      by rewrite //=.
+      move => X' mu.
+      by rewrite complementary_specialized_le.
     Qed.
       
 
@@ -144,18 +133,16 @@ Section pos_proof.
 
     Lemma complementary_Ls_Bound :
     let X' := bool_trial_value LS in
-    let mu := 'E_(\X_nbre_de_slots P)[X'] in
-    (\X_nbre_de_slots P) [set i | (1 - deltaLs) * fine mu <  X' i ]%R
+    let mu := 'E_(\X_Sc P)[X'] in
+    (\X_Sc P) [set i | (1 - deltaLs) * fine mu <  X' i ]%R
     = 
       let X' := bool_trial_value LS in
-    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    let mu := 'E_(\X_Sc P)[X'] in
     (((1%R)%:E - 
-      (\X_nbre_de_slots P) [set i | X' i <= (1 - deltaLs) * fine mu ]%R))%E.
+      (\X_Sc P) [set i | X' i <= (1 - deltaLs) * fine mu ]%R))%E.
     Proof.
-    rewrite -complementary_specialized_LS /=.
-    set X' := bool_trial_value LS.
-    set mu := 'E_(\X_nbre_de_slots P)[X'].
-    set B := ((1 - deltaLs) * fine mu)%R.
+    move => X' mu.
+    rewrite -complementary_specialized_LS .
     by rewrite set_gt_as_compl_le.
   Qed.
 
@@ -164,11 +151,11 @@ Section pos_proof.
 
   Theorem chain_growth_bound : 
     let X' := bool_trial_value LS in
-    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    let mu := 'E_(\X_Sc P)[X'] in
     (((1%R)%:E -
       (expR (-(fine mu * deltaLs ^+ 2) / 2)%R)%:E)%E
     <=
-    (\X_nbre_de_slots P)
+    (\X_Sc P)
       [set i | (1 - deltaLs) * fine mu < X' i]%R)%E.
     Proof.
       rewrite /=.
@@ -177,7 +164,7 @@ Section pos_proof.
       rewrite complementary_Ls_Bound /=.
       rewrite /= in H1.
       set X' := bool_trial_value LS.
-      set mu := 'E_(\X_nbre_de_slots P)[X'].
+      set mu := 'E_(\X_Sc P)[X'].
       rewrite /mu -leeN2 in H1.
       rewrite /mu.
       by apply : leeD2l H1.
@@ -185,17 +172,17 @@ Section pos_proof.
 
   Definition Chain_growth_ls_Good_event :=
     let X' := bool_trial_value LS in 
-    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    let mu := 'E_(\X_Sc P)[X'] in
     [set r | ((1 - deltaLs) * fine mu < X' r)%R].
 
   Definition chain_growth_parties_event (w : nat)  :=
   let X' := bool_trial_value LS in 
-  [set r : nbre_de_slots.-tuple T | ((|bestChain (t_now N - 1)%N (tree l1)| + w)%N <= |bestChain (t_now N' - 1)%N (tree l2)|)%N].
+  [set r : Sc.-tuple T | ((|bestChain (t_now N - 1)%N (tree l1)| + w)%N <= |bestChain (t_now N' - 1)%N (tree l2)|)%N].
   
 
   Lemma Good_Ls_implies_chain_growth w :
   let X' := bool_trial_value LS in
-  let mu := 'E_(\X_nbre_de_slots P)[X'] in
+  let mu := 'E_(\X_Sc P)[X'] in
   w%:R <= (1 - deltaLs) * fine mu
   -> 
   (forall r , Chain_growth_ls_Good_event r-> chain_growth_parties_event w r).
@@ -218,12 +205,12 @@ Section pos_proof.
 
   Lemma probability_implication (w : nat) :
   let X' := bool_trial_value LS in
-  let mu := 'E_(\X_nbre_de_slots P)[X'] in
+  let mu := 'E_(\X_Sc P)[X'] in
   w%:R <= (1 - deltaLs) * fine mu
   ->
   let X' := bool_trial_value LS in
-  let mu := 'E_(\X_nbre_de_slots P)[X'] in
-  ((\X_nbre_de_slots P) Chain_growth_ls_Good_event<= (\X_nbre_de_slots P) (chain_growth_parties_event w))%E .
+  let mu := 'E_(\X_Sc P)[X'] in
+  ((\X_Sc P) Chain_growth_ls_Good_event<= (\X_Sc P) (chain_growth_parties_event w))%E .
   Proof.
   move => X' mu H1.
   set B := ((1 - deltaLs) * fine mu)%R.
@@ -247,8 +234,7 @@ Section pos_proof.
         move /negP => H.
         apply H.
     }
-    rewrite Hinvertedle.
-    
+    rewrite set_lt_eq_neg_le.
     have Hle :
     (measurable_structure.measure_tuple_display d).-measurable [set r | (X' r <= B)%R] .
     {
@@ -277,15 +263,15 @@ Section pos_proof.
 
   Theorem Chernoff_bound_chain_growth_parties_even (w:nat): 
   let X' := bool_trial_value LS in
-  let mu := 'E_(\X_nbre_de_slots P)[X'] in
+  let mu := 'E_(\X_Sc P)[X'] in
   w%:R <= (1 - deltaLs) * fine mu 
   ->
   let X' := bool_trial_value LS in
-  let mu := 'E_(\X_nbre_de_slots P)[X'] in
+  let mu := 'E_(\X_Sc P)[X'] in
   (
   ((1%R)%:E - (expR (-(fine mu * deltaLs ^+ 2) / 2)%R)%:E)%E
   <= 
-  ((\X_nbre_de_slots P) (chain_growth_parties_event w))%E
+  ((\X_Sc P) (chain_growth_parties_event w))%E
   )%E.
   Proof.
     move => X' mu H.
@@ -299,58 +285,31 @@ Section pos_proof.
 
       Lemma complementary_specialized_SS : 
     let X' := bool_trial_value SS in
-    let mu := 'E_(\X_nbre_de_slots P)[X'] in
-    (\X_nbre_de_slots P) [set i | ~~ (X' i <= (1 - deltaSs) * fine mu)%R ]%R
+    let mu := 'E_(\X_Sc P)[X'] in
+    (\X_Sc P) [set i | ~~ (X' i <= (1 - deltaSs) * fine mu)%R ]%R
     = 
       let X' := bool_trial_value SS in
-    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    let mu := 'E_(\X_Sc P)[X'] in
     (((1%R)%:E - 
-      (\X_nbre_de_slots P) [set i | X' i <= (1 - deltaSs) * fine mu ]%R))%E.
+      (\X_Sc P) [set i | X' i <= (1 - deltaSs) * fine mu ]%R))%E.
     Proof.
-      rewrite /= .
-      set X' := bool_trial_value SS.
-      set mu := 'E_(\X_nbre_de_slots P)[X'].
-      set B :=  (1 - deltaSs) * fine mu.
-      set A := [set i | X' i <= B ].
-      set Pr := (\X_nbre_de_slots P).
-      have  Hsame :
-      [set i | ~~ (X' i <= B )] = ~` A.
-      {
-      apply/seteqP.
-      split.
-      - move => i Hi.
-        rewrite /A /= .
-        rewrite /= in Hi.
-        move /negP in Hi.
-        apply Hi.
-      move => i Hi.
-      rewrite /A /= in Hi.
-      rewrite /=.
-      apply /negP.
-      apply Hi.
-      }
-      rewrite Hsame.
-      apply probability_setC.
-      rewrite -(ST_Set A).
-      apply: (measurable_fun_le (D := setT) (f := X') (g := fun _ => B)) .
-      - apply: measurableT.
-      - by rewrite //=.
-      by rewrite //=.
+      move => X' mu. 
+      by rewrite complementary_specialized_le.
     Qed.
 
     Lemma complementary_SS_bound:
     let X' := bool_trial_value SS in
-    let mu := 'E_(\X_nbre_de_slots P)[X'] in
-    (\X_nbre_de_slots P) [set i | (1 - deltaSs) * fine mu <  X' i ]%R
+    let mu := 'E_(\X_Sc P)[X'] in
+    (\X_Sc P) [set i | (1 - deltaSs) * fine mu <  X' i ]%R
     = 
       let X' := bool_trial_value SS in
-    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    let mu := 'E_(\X_Sc P)[X'] in
     (((1%R)%:E - 
-      (\X_nbre_de_slots P) [set i | X' i <= (1 - deltaSs) * fine mu ]%R))%E.
+      (\X_Sc P) [set i | X' i <= (1 - deltaSs) * fine mu ]%R))%E.
     Proof.
     move => X' mu.
-    rewrite -complementary_specialized_SS /=.
-    by rewrite -(set_gt_as_compl_le X' ((1 - deltaSs) * fine mu)).
+    rewrite -complementary_specialized_SS.
+    by rewrite -(set_gt_as_compl_le).
   Qed.
 
       
@@ -358,11 +317,11 @@ Section pos_proof.
 
   Theorem complementary_SS_event : 
     let X' := bool_trial_value SS in
-    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    let mu := 'E_(\X_Sc P)[X'] in
     (((1%R)%:E -
       (expR (-(fine mu * deltaSs ^+ 2) / 2)%R)%:E)%E
     <=
-    (\X_nbre_de_slots P)
+    (\X_Sc P)
       [set i | (1 - deltaSs) * fine mu < X' i]%R)%E.
     Proof.
       rewrite /=.
@@ -371,7 +330,7 @@ Section pos_proof.
       rewrite complementary_SS_bound /=.
       rewrite /= in H1.
       set X' := bool_trial_value SS.
-      set mu := 'E_(\X_nbre_de_slots P)[X'].
+      set mu := 'E_(\X_Sc P)[X'].
       rewrite /mu -leeN2 in H1.
       rewrite /mu.
       by apply : leeD2l H1.
@@ -380,20 +339,20 @@ Section pos_proof.
 
   Lemma complementary_specialized_AS : 
     let X' := bool_trial_value AS in
-    let mu := 'E_(\X_nbre_de_slots P)[X'] in
-    (\X_nbre_de_slots P) [set i | ~~ (X' i >= (1 + deltaAs) * fine mu)%R ]%R
+    let mu := 'E_(\X_Sc P)[X'] in
+    (\X_Sc P) [set i | ~~ (X' i >= (1 + deltaAs) * fine mu)%R ]%R
     = 
       let X' := bool_trial_value AS in
-    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    let mu := 'E_(\X_Sc P)[X'] in
     (((1%R)%:E - 
-      (\X_nbre_de_slots P) [set i | X' i >= (1 + deltaAs) * fine mu ]%R))%E.
+      (\X_Sc P) [set i | X' i >= (1 + deltaAs) * fine mu ]%R))%E.
     Proof.
       rewrite /= .
       set X' := bool_trial_value AS.
-      set mu := 'E_(\X_nbre_de_slots P)[X'].
+      set mu := 'E_(\X_Sc P)[X'].
       set B :=  (1 + deltaAs) * fine mu.
       set A := [set i | X' i >= B ].
-      set Pr := (\X_nbre_de_slots P).
+      set Pr := (\X_Sc P).
       have  Hsame :
       [set i | ~~ (X' i >= B )] = ~` A.
       {
@@ -422,17 +381,17 @@ Section pos_proof.
 
 Lemma complementary_AS_bound:
   let X' := bool_trial_value AS in
-  let mu := 'E_(\X_nbre_de_slots P)[X'] in
-  (\X_nbre_de_slots P) [set i |  X' i   < (1 + deltaAs) * fine mu ]%R
+  let mu := 'E_(\X_Sc P)[X'] in
+  (\X_Sc P) [set i |  X' i   < (1 + deltaAs) * fine mu ]%R
   = 
   let X' := bool_trial_value AS in
-  let mu := 'E_(\X_nbre_de_slots P)[X'] in
+  let mu := 'E_(\X_Sc P)[X'] in
   (((1%R)%:E - 
-  (\X_nbre_de_slots P) [set i | X' i >= (1 + deltaAs) * fine mu ]%R))%E.
+  (\X_Sc P) [set i | X' i >= (1 + deltaAs) * fine mu ]%R))%E.
   Proof.
     rewrite -complementary_specialized_AS /=.
     set X' := bool_trial_value AS.
-    set mu := 'E_(\X_nbre_de_slots P)[X'].
+    set mu := 'E_(\X_Sc P)[X'].
     set B := ((1 + deltaAs) * fine mu)%R.
     have Hset :
     [set i | X' i  < B]%R =
@@ -454,11 +413,11 @@ Lemma complementary_AS_bound:
 
   Theorem complementary_AS_event : 
     let X' := bool_trial_value AS in
-    let mu := 'E_(\X_nbre_de_slots P)[X'] in
+    let mu := 'E_(\X_Sc P)[X'] in
     (((1%R)%:E -
       (expR (-(fine mu * deltaAs ^+ 2) / 3)%R)%:E)%E
     <=
-    (\X_nbre_de_slots P)
+    (\X_Sc P)
       [set i | X' i < (1 + deltaAs) * fine mu]%R)%E.
     Proof.
       rewrite /=.
@@ -467,7 +426,7 @@ Lemma complementary_AS_bound:
       rewrite complementary_AS_bound /=.
       rewrite /= in H1.
       set X' := bool_trial_value AS.
-      set mu := 'E_(\X_nbre_de_slots P)[X'].
+      set mu := 'E_(\X_Sc P)[X'].
       rewrite /mu -leeN2 in H1.
       rewrite /mu.
       by apply : leeD2l H1.
@@ -478,8 +437,8 @@ Lemma complementary_AS_bound:
 Lemma SS_gt_2AS : 
     let XSS := bool_trial_value SS in
     let XAS := bool_trial_value AS in
-    let muSS := 'E_(\X_nbre_de_slots P)[XSS] in
-    let muAS := 'E_(\X_nbre_de_slots P)[XAS] in
+    let muSS := 'E_(\X_Sc P)[XSS] in
+    let muAS := 'E_(\X_Sc P)[XAS] in
     ( ((1+deltaAs) * fine muAS) *+ 2) < (1 - deltaSs) * fine muSS
     ->
     forall r,
@@ -531,12 +490,131 @@ Lemma epsilon_condition_CP :
     move/andP : delta_range_Ss => [H1 H2].
     apply H2.
   Qed.
+
+
+  Definition SS_good_event := 
+  let X' := bool_trial_value SS in
+  let muSS := 'E_(\X_Sc P)[X'] in
+  [set r | (1 - deltaSs) * fine muSS <= X' r].
+   
+   
+  Lemma SS_measurable_good_event : 
+  measurable SS_good_event.
+  Proof.
+    set X' := bool_trial_value SS.
+    set muSS := 'E_(\X_Sc P)[X'].
+    rewrite /SS_good_event. 
+    rewrite -/X'.
+    rewrite -/muSS.
+    set B := (1 - deltaSs) * fine muSS.
+    rewrite -(ST_Set [set r | B <= X' r]).
+    apply: (measurable_fun_le (D := setT) (f := fun _ => B) (g :=X' )).
+    - apply : measurableT.
+    - rewrite //=.
+    rewrite //=.
+Qed.
+  
+
+  Definition AS_good_event := 
+  let X' := bool_trial_value AS in
+  let muAS := 'E_(\X_Sc P)[X'] in
+  [set r | (1 + deltaAs) * fine muAS > X' r].
+
+  Lemma AS_measurable_good_event : 
+    measurable AS_good_event.
+    Proof.
+      set X' := bool_trial_value AS.
+      set muAS := 'E_(\X_Sc P)[X'].
+      rewrite /AS_good_event. 
+      rewrite -/X'.
+      rewrite -/muAS.
+      set B := (1 + deltaAs) * fine muAS.
+      have Hcomp : 
+      [set r | X' r < B] = [set r | ~~ (B <= X' r)].
+      {
+        apply /seteqP.
+        split.
+        - move => r //= Hr ; by rewrite -ltNge.
+        move => r //= Hr. by rewrite -ltNge in Hr.
+      } 
+      rewrite Hcomp.
+      have HsetNcomp :
+      [set r | ~~ (B <= X' r)] = ~` [set r | B <= X' r].
+      {
+        apply /seteqP.
+        split.
+        - move => r Hr.
+          rewrite //=.
+          rewrite //= in Hr.
+          move /negP in Hr.
+          apply : Hr.
+         - move => r Hr.
+           rewrite //=.
+           rewrite //= in Hr.
+           move /negP in Hr.
+           apply Hr.
+        }
+          
+        rewrite  HsetNcomp.
+        apply measurableC.
+        rewrite -(ST_Set ([set r | B <= X' r])). 
+      apply: (measurable_fun_le (D := setT) (f := fun _ => B) (g := X')).
+    -  by apply: measurableT.
+    - rewrite  //=.
+    rewrite //=.
+Qed.
+    
+  
+  Definition CP_good_event := 
+  SS_good_event `&` AS_good_event.
+
+  Lemma union_bound :
+  (\X_Sc P) (SS_good_event `&` AS_good_event)
+  =
+  (1%R%:E - (\X_Sc P) ((~` SS_good_event) `|` (~` AS_good_event)))%E.
+  Proof.
+  rewrite -probability_setC.
+  - congr ((\X_Sc P) _).
+    apply /seteqP.
+    split.
+    + move => r [Hl Hr].
+      move => [Hll | Hrr].
+      + rewrite //=.
+      rewrite //=.
+    + move => r H.
+      split.
+      * apply : Classical_Prop.NNPP => HSS.
+        apply : H.
+        by left.
+      apply : Classical_Prop.NNPP => HAS.
+      apply : H.
+      by right.
+  - apply : measurableU.
+    + apply measurableC.
+      apply SS_measurable_good_event.
+     apply measurableC.
+     apply AS_measurable_good_event.
+  Qed.
+  
+  
+  Lemma bad_event_union_bound : 
+  ((\X_Sc P) ((~` SS_good_event) `|` (~` AS_good_event))%E
+   <=
+  ((\X_Sc P) (~` SS_good_event)) + ((\X_Sc P) (~` AS_good_event)))%E.
+  Proof.
+    apply : measureU2 ; apply : measurableC.
+    - apply : SS_measurable_good_event.
+    apply : AS_measurable_good_event.
+  Qed.
     
 
+    
+  
+  
+  
+  
 End pos_proof.  
 
-
-      
 
 
 
