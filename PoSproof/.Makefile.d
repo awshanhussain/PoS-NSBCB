@@ -1,4 +1,0 @@
-./theories/Rstruct_topology.vo ./theories/Rstruct_topology.glob ./theories/Rstruct_topology.v.beautified ./theories/Rstruct_topology.required_vo: ./theories/Rstruct_topology.v /home/awshan/_opam/lib/rocq-runtime/rocqworker
-./theories/Rstruct_topology.vos ./theories/Rstruct_topology.vok ./theories/Rstruct_topology.required_vos: ./theories/Rstruct_topology.v /home/awshan/_opam/lib/rocq-runtime/rocqworker
-./theories/sampling.vo ./theories/sampling.glob ./theories/sampling.v.beautified ./theories/sampling.required_vo: ./theories/sampling.v ./theories/Rstruct_topology.vo /home/awshan/_opam/lib/rocq-runtime/rocqworker
-./theories/sampling.vos ./theories/sampling.vok ./theories/sampling.required_vos: ./theories/sampling.v ./theories/Rstruct_topology.vos /home/awshan/_opam/lib/rocq-runtime/rocqworker

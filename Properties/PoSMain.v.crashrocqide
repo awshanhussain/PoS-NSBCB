@@ -115,11 +115,10 @@ Section pos_proof.
     Variable (l1 l2 : LocalState).
     Hypothesis l1_p1_state : has_state p1 N l1.
     Hypothesis l2_p2_state : has_state p2 N' l2.
-    
+
     (*Assumption to link the bool_trial_value LS to the amount of lucky slots between N and N'*)
-    Hypothesis LS_r_eq_slotrange : forall r, (LS_r r  = | lucky_slots_range (t_now N) (t_now N' - 1) |%:R)%N.	
- 
- 
+    Hypothesis LS_r_eq_slotrange : forall r,  (LS_r r  = | lucky_slots_range (t_now N) (t_now N' - 1) |%:R)%N.
+      
     Lemma complementary_specialized_LS : 
     let X' := bool_trial_value LS in
     let mu := 'E_(\X_Sc P)[X'] in
@@ -433,292 +432,6 @@ Lemma complementary_AS_bound:
       rewrite /mu.
       by apply : leeD2l H1.
     Qed.
-    
-    
-  Section ChainQuality.
-  
-    Variable (N : GlobalState).
-    Hypothesis N_from_initial : N0 ⇓ N.
-    Hypothesis N_forging_free : forging_free N.
-    Hypothesis N_collision_free : collision_free N.
-    
-    Variable (p : Party).
-    Hypothesis p_is_honest : is_honest p.
-    
-    Variable (l : LocalState).
-    
-    Hypothesis p_has_state_l: has_state p N l.
-   
-   
-    Variable (b_i b_j : Block).
-    Variable (c : Chain).
-    Hypothesis interval_is_fragment_of_best :
-    fragment (bestChain ((t_now N)-1)%N (tree l)) ([:: b_j] ++ c ++ [:: b_i]).
-    
-    
-    Variables  (epsilon:R).
-
-
-
-
-    Definition LS_good_event_CQ :=
-    let X' := bool_trial_value LS in
-    let muLS := 'E_(\X_Sc P)[X'] in
-    [set r | (1 - deltaLs) * fine muLS < X' r].
-    
-    Definition AS_good_event_CQ :=
-    let X' := bool_trial_value AS in
-    let muAS := 'E_(\X_Sc P)[X'] in
-    [set r | (1 + deltaAs) * fine muAS > X' r].
-    
-    
-     Definition CP_good_event := LS_good_event_CQ `&` AS_good_event_CQ.
-    
-    
-    Lemma LS_measurable_good_event : 
-    measurable LS_good_event_CQ.
-    Proof.
-      set X' := bool_trial_value LS.
-      set muLS := 'E_(\X_Sc P)[X'].
-      rewrite /LS_good_event_CQ. 
-      rewrite -/X'.
-      rewrite -/muLS.
-      set B := (1 - deltaLs) * fine muLS.
-      rewrite set_lt_eq_neg_le.
-      apply : measurableC.
-      rewrite -(ST_Set [set r |  X' r <= B]).
-      apply: (measurable_fun_le (D := setT) (f := X' ) (g := fun _ => B)).
-      - apply : measurableT.
-      - rewrite //=.
-      rewrite //=.
-    Qed.
-
-
-    
-    
-    Lemma AS_measurable_good_event : 
-    measurable AS_good_event_CQ.
-    Proof.
-      set X' := bool_trial_value AS.
-      set muAS := 'E_(\X_Sc P)[X'].
-      rewrite /AS_good_event_CQ. 
-      rewrite -/X'.
-      rewrite -/muAS.
-      set B := (1 + deltaAs) * fine muAS.
-      have Hcomp : 
-      [set r | X' r < B] = [set r | ~~ (B <= X' r)].
-      {
-        apply /seteqP.
-        split.
-        - move => r //= Hr ; by rewrite -ltNge.
-        move => r //= Hr. by rewrite -ltNge in Hr.
-      } 
-      rewrite Hcomp.
-      have HsetNcomp :
-      [set r | ~~ (B <= X' r)] = ~` [set r | B <= X' r].
-      {
-        apply /seteqP.
-        split.
-        - move => r Hr.
-          rewrite //=.
-          rewrite //= in Hr.
-          move /negP in Hr.
-          apply : Hr.
-         - move => r Hr.
-           rewrite //=.
-           rewrite //= in Hr.
-           move /negP in Hr.
-           apply Hr.
-        }
-          
-        rewrite  HsetNcomp.
-        apply measurableC.
-        rewrite -(ST_Set ([set r | B <= X' r])). 
-      apply: (measurable_fun_le (D := setT) (f := fun _ => B) (g := X')).
-    -  by apply: measurableT.
-    - rewrite  //=.
-    rewrite //=.
-Qed.
-    
-    
-    Lemma LS_gt_AS : 
-    let XLS := bool_trial_value LS in
-    let XAS := bool_trial_value AS in
-    let muLS := 'E_(\X_Sc P)[XLS] in
-    let muAS := 'E_(\X_Sc P)[XAS] in
-    (1+deltaAs) * fine muAS < (1 - deltaLs) * fine muLS
-    ->
-    forall r,
-    (1+deltaAs) * fine muAS > AS_r r  ->
-    ((1-deltaLs) * fine muLS) < LS_r r->
-    (LS_r r > AS_r r).
-    Proof.
-      cbv zeta.
-      move => H r HAS HLS.
-      apply: (lt_trans HAS).
-      apply: (lt_trans H).
-      apply HLS.
-    Qed.
-    
-    Lemma epsilon_condition_CQ :
-    (1 - deltaLs) * (pAs + epsilon) >
-    (1 + deltaAs) * pAs <->
-    epsilon > (((1 + deltaAs) / (1 - deltaLs)) - 1) * pAs.
-    Proof.
-      split.
-        - move => H.
-          rewrite (mulrC (1 - deltaLs) (pAs + epsilon) ) in H.
-          rewrite -(ltr_pdivrMr (pAs + epsilon)) in H.
-          rewrite (mulrC (1 + deltaAs)) in H.
-          rewrite (mulrC pAs) in H.
-          rewrite mulrBl mulrC mulrC ltrBlDr mul1r (addrC epsilon) -mulrA (mulrC ((1 - deltaLs)^-1))  mulrA.
-          apply : H.
-          rewrite subr_gt0.
-          move/andP : delta_range_Ls => [H1 H2].
-          apply H2.
-      move => H.
-      rewrite (mulrC (1 - deltaLs) (pAs + epsilon) ).
-      rewrite -(ltr_pdivrMr (pAs + epsilon)) .
-      rewrite (mulrC (1 + deltaAs)).
-      rewrite (mulrC pAs).
-      rewrite mulrBl mulrC mulrC ltrBlDr mul1r (addrC epsilon) -mulrA (mulrC ((1 - deltaLs)^-1))  mulrA in H.
-      apply : H.
-      rewrite subr_gt0.
-      move/andP : delta_range_Ls => [H1 H2].
-      apply H2.
-    Qed.
-    
-    
-    Lemma union_bound :
-    (\X_Sc P) (LS_good_event_CQ `&` AS_good_event_CQ)
-    =
-    (1%R%:E - (\X_Sc P) ((~` LS_good_event_CQ) `|` (~` AS_good_event_CQ)))%E.
-    Proof.
-    rewrite -probability_setC.
-    - congr ((\X_Sc P) _).
-      apply /seteqP.
-      split.
-      + move => r [Hl Hr].
-        move => [Hll | Hrr].
-        + rewrite //=.
-        rewrite //=.
-      + move => r H.
-        split.
-        * apply : Classical_Prop.NNPP => HLS.
-          apply : H.
-          by left.
-        apply : Classical_Prop.NNPP => HAS.
-        apply : H.
-        by right.
-    - apply : measurableU.
-      + apply measurableC.
-        apply LS_measurable_good_event.
-       apply measurableC.
-       apply AS_measurable_good_event.
-    Qed.
-
-    
-    Lemma bad_event_union_bound : 
-    ((\X_Sc P) ((~` LS_good_event_CQ) `|` (~` AS_good_event_CQ))%E
-    <=
-    ((\X_Sc P) (~` LS_good_event_CQ)) + ((\X_Sc P) (~` AS_good_event_CQ)))%E.
-    Proof.
-      apply : measureU2 ; apply : measurableC.
-      - apply : LS_measurable_good_event.
-      apply : AS_measurable_good_event.
-    Qed.
-    
-    
-    Theorem CP_good_event_minus_bound :
-    let XLS' := bool_trial_value LS in
-    let muLS := 'E_(\X_Sc P)[XLS'] in
-    let XAS' := bool_trial_value AS in
-    let muAS := 'E_(\X_Sc P)[XAS'] in
-    ((1%R%:E - 
-    ((expR (-(fine muLS * deltaLs ^+ 2) / 2)%R)%:E) -
-    ((expR (-(fine muAS * deltaAs ^+ 2) / 3)%R)%:E))%E
-    <=
-    (\X_Sc P) CP_good_event)%E.
-    Proof.
-      rewrite union_bound.
-      About sube_eq.
-      set U := (\X_Sc P) (~` LS_good_event_CQ `|` ~` AS_good_event_CQ).
-      cbv zeta.
-      rewrite -addeA.
-      rewrite leeD2l.
-      - by []. 
-      rewrite /U.
-      rewrite -oppeD.
-      - rewrite leeN2.
-        apply (le_trans bad_event_union_bound).
-        rewrite leeD.
-           + by [].
-          rewrite /LS_good_event_CQ.
-          apply: (le_trans _ (sampling_ineq3 pLs01 LS delta_range_Ls)).
-          apply : le_measure.
-          * rewrite inE.
-            rewrite -try3.
-            rewrite -(ST_Set ([set r | bool_trial_value LS r <= (1 - deltaLs) * fine 'E_(\X_Sc P)[(bool_trial_value LS) ] ] ) ).
-            apply: (measurable_fun_le (D := setT)).
-            -- apply : measurableT.
-            -- rewrite //=.
-            rewrite //=.
-          * rewrite inE.
-            rewrite -(ST_Set ([set i | bool_trial_value LS i <= (1 - deltaLs) * fine 'E_(\X_Sc P)[(bool_trial_value LS)] ] ) ).
-            apply: (measurable_fun_le (D := setT)).
-            -- apply : measurableT.
-            -- rewrite //=.
-            rewrite //=.
-          move => r Hr.
-          rewrite -try3 in Hr.
-          exact: Hr.
-      rewrite /AS_good_event_CQ.
-      rewrite -try2.
-      apply (sampling_ineq2 pAs01 AS n_sup_O delta_range_As).
-      rewrite //=.
-    Qed.
-    
-    
-    
-   
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
   
   Section CommonPrefix.
     
@@ -780,7 +493,58 @@ Qed.
       move/andP : delta_range_Ss => [H1 H2].
       apply H2.
     Qed.
+  Lemma try : 
+    forall (X : (Sc.-tuple T) -> R) (B : R),
+    [set r  | (X r < B)%R] = ~` [set r | ( B <= X r)%R].
+    Proof.
+        move =>  X B .
+        apply/seteqP.
+        split.
+        - move => r.
+          rewrite //=.
+          rewrite ltNge.
+          move /negP => H.
+          apply H.
+        move => r.
+        rewrite //=.
+        rewrite ltNge.
+        move /negP => H.
+        apply H.
+    Qed.
     
+  Lemma try2 : 
+  forall (X : (Sc.-tuple T) -> R) (B : R),
+ [set r | ( B <= X r)%R] =  ~` [set r  | (X r < B)%R] .
+ Proof.
+        move =>  X B .
+        apply/seteqP.
+        split.
+        - move => r Hr Hlt.
+          move : Hlt . rewrite //= ltNge Hr //=.
+        - move => r Hr /=.
+          rewrite leNgt.
+          apply/negP => Hlt.
+          move : Hr.
+          rewrite //=.
+    Qed.
+    
+    
+    Lemma try3 : 
+  forall (X : (Sc.-tuple T) -> R) (B : R),
+ [set r | ( X r <= B)%R] =  ~` [set r  | (B < X r)%R] .
+ Proof.
+        move =>  X B .
+        apply/seteqP.
+        split.
+        - move => r Hr Hlt.
+          move : Hlt . rewrite //= ltNge Hr //=.
+        - move => r Hr /=.
+          rewrite leNgt.
+          apply/negP => Hlt.
+          move : Hr.
+          rewrite //=.
+    Qed.
+
   Definition SS_good_event := 
   let X' := bool_trial_value SS in
   let muSS := 'E_(\X_Sc P)[X'] in
@@ -806,17 +570,17 @@ Qed.
 Qed.
   
 
-  Definition AS_good_event_CP := 
+  Definition AS_good_event := 
   let X' := bool_trial_value AS in
   let muAS := 'E_(\X_Sc P)[X'] in
   [set r | (1 + deltaAs) * fine muAS > X' r].
 
   Lemma AS_measurable_good_event : 
-    measurable AS_good_event_CP.
+    measurable AS_good_event.
     Proof.
       set X' := bool_trial_value AS.
       set muAS := 'E_(\X_Sc P)[X'].
-      rewrite /AS_good_event_CP_CP. 
+      rewrite /AS_good_event. 
       rewrite -/X'.
       rewrite -/muAS.
       set B := (1 + deltaAs) * fine muAS.
@@ -857,12 +621,12 @@ Qed.
     
   
   Definition CP_good_event := 
-  SS_good_event `&` AS_good_event_CP.
+  SS_good_event `&` AS_good_event.
 
   Lemma union_bound :
-  (\X_Sc P) (SS_good_event `&` AS_good_event_CP)
+  (\X_Sc P) (SS_good_event `&` AS_good_event)
   =
-  (1%R%:E - (\X_Sc P) ((~` SS_good_event) `|` (~` AS_good_event_CP)))%E.
+  (1%R%:E - (\X_Sc P) ((~` SS_good_event) `|` (~` AS_good_event)))%E.
   Proof.
   rewrite -probability_setC.
   - congr ((\X_Sc P) _).
@@ -921,9 +685,9 @@ Qed.
   
   
   Lemma bad_event_union_bound : 
-  ((\X_Sc P) ((~` SS_good_event) `|` (~` AS_good_event_CP))%E
+  ((\X_Sc P) ((~` SS_good_event) `|` (~` AS_good_event))%E
    <=
-  ((\X_Sc P) (~` SS_good_event)) + ((\X_Sc P) (~` AS_good_event_CP)))%E.
+  ((\X_Sc P) (~` SS_good_event)) + ((\X_Sc P) (~` AS_good_event)))%E.
   Proof.
     apply : measureU2 ; apply : measurableC.
     - apply : SS_measurable_good_event.
@@ -945,7 +709,7 @@ Qed.
   Proof.
   rewrite union_bound.
   About sube_eq.
-  set U := (\X_Sc P) (~` SS_good_event `|` ~` AS_good_event_CP).
+  set U := (\X_Sc P) (~` SS_good_event `|` ~` AS_good_event).
   cbv zeta.
   rewrite -addeA.
   rewrite leeD2l.
@@ -975,7 +739,7 @@ Qed.
       move => r Hr.
       rewrite -try3 in Hr.
       exact: Hr.
-  rewrite /AS_good_event_CP.
+  rewrite /AS_good_event.
   rewrite -try2.
   apply (sampling_ineq2 pAs01 AS n_sup_O delta_range_As).
   rewrite //=.

@@ -140,59 +140,6 @@
         - by rewrite //=.
         rewrite //=.
     Qed.
-    
-    Lemma try : 
-    forall (X : (n.-tuple T) -> R) (B : R),
-    [set r  | (X r < B)%R] = ~` [set r | ( B <= X r)%R].
-    Proof.
-      move =>  X B .
-      apply/seteqP.
-      split.
-      - move => r.
-        rewrite //=.
-        rewrite ltNge.
-        move /negP => H.
-        apply H.
-      move => r.
-      rewrite //=.
-      rewrite ltNge.
-      move /negP => H.
-      apply H.
-    Qed.
-    
-    Lemma try2 : 
-    forall (X : (n.-tuple T) -> R) (B : R),
-    [set r | ( B <= X r)%R] =  ~` [set r  | (X r < B)%R] .
-    Proof.
-      move =>  X B .
-      apply/seteqP.
-      split.
-        - move => r Hr Hlt.
-          move : Hlt . rewrite //= ltNge Hr //=.
-      move => r Hr /=.
-      rewrite leNgt.
-      apply/negP => Hlt.
-      move : Hr.
-      rewrite //=.
-    Qed.
-    
-    
-    Lemma try3 : 
-    forall (X : (n.-tuple T) -> R) (B : R),
-    [set r | ( X r <= B)%R] =  ~` [set r  | (B < X r)%R] .
-    Proof.
-      move =>  X B .
-      apply/seteqP.
-      split.
-        - move => r Hr Hlt.
-          move : Hlt . rewrite //= ltNge Hr //=.
-      move => r Hr /=.
-      rewrite leNgt.
-      apply/negP => Hlt.
-      move : Hr.
-      rewrite //=.
-    Qed.
-
             
 End set_lemmas.
 
