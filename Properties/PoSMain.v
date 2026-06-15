@@ -90,7 +90,7 @@ Section pos_proof.
     Hypothesis lottery_assumption_CP : exists epsilon , (epsilon > 0) /\ pSs >= (pAs *+ 2) + epsilon .
     Hypothesis lottery_assumption_CQ : exists epsilon , (epsilon > 0) /\ pLs >= pAs + epsilon.
     
-    
+    Variable (epsilon : R).
     
     
     
@@ -466,7 +466,7 @@ Lemma complementary_AS_bound:
     Hypothesis LS_r_link_Bi_Bj_interval : forall r , (LS_r r = |lucky_slots_range (sl b_j) (sl b_i + 1) |%:R ).  
     
     Hypothesis AS_r_link_Bi_Bj_interval : forall r , (AS_r r = | adv_slots_range (sl b_j) (sl b_i + 1) |%:R ).
-    Variables  (epsilon:R).
+    
 
     Hypothesis delta_choice : (1 + deltaAs) * pAs < (1 - deltaLs) * pLs.
 
@@ -501,7 +501,7 @@ Lemma complementary_AS_bound:
 
 
 
-    Lemma LS_measurable_good_event : 
+    Lemma LS_measurable_good_event_CQ : 
     measurable LS_good_event_CQ.
     Proof.
       set X' := bool_trial_value LS.
@@ -522,7 +522,7 @@ Lemma complementary_AS_bound:
 
     
     
-    Lemma AS_measurable_good_event : 
+    Lemma AS_measurable_good_event_CQ : 
     measurable AS_good_event_CQ.
     Proof.
       set X' := bool_trial_value AS.
@@ -618,7 +618,7 @@ Qed.
     Qed.
     
     
-    Lemma union_bound :
+    Lemma union_bound_LS_AS_CQ :
     (\X_Sc P) (LS_good_event_CQ `&` AS_good_event_CQ)
     =
     (1%R%:E - (\X_Sc P) ((~` LS_good_event_CQ) `|` (~` AS_good_event_CQ)))%E.
@@ -641,9 +641,9 @@ Qed.
         by right.
     - apply : measurableU.
       + apply measurableC.
-        apply LS_measurable_good_event.
+        apply LS_measurable_good_event_CQ.
        apply measurableC.
-       apply AS_measurable_good_event.
+       apply AS_measurable_good_event_CQ.
     Qed.
 
 
@@ -673,14 +673,14 @@ Qed.
       
       
       
-    Lemma bad_event_union_bound : 
+    Lemma bad_event_union_bound_CQ : 
     ((\X_Sc P) ((~` LS_good_event_CQ) `|` (~` AS_good_event_CQ))%E
     <=
     ((\X_Sc P) (~` LS_good_event_CQ)) + ((\X_Sc P) (~` AS_good_event_CQ)))%E.
     Proof.
       apply : measureU2 ; apply : measurableC.
-      - apply : LS_measurable_good_event.
-      apply : AS_measurable_good_event.
+      - apply : LS_measurable_good_event_CQ.
+      apply : AS_measurable_good_event_CQ.
     Qed.
     
     
@@ -695,7 +695,7 @@ Qed.
     <=
     (\X_Sc P) CQ_good_event)%E.
     Proof.
-      rewrite union_bound.
+      rewrite union_bound_LS_AS_CQ.
       About sube_eq.
       set U := (\X_Sc P) (~` LS_good_event_CQ `|` ~` AS_good_event_CQ).
       cbv zeta.
@@ -705,7 +705,7 @@ Qed.
       rewrite /U.
       rewrite -oppeD.
       - rewrite leeN2.
-        apply (le_trans bad_event_union_bound).
+        apply (le_trans bad_event_union_bound_CQ).
         rewrite leeD.
            + by [].
           rewrite /LS_good_event_CQ.
@@ -757,10 +757,10 @@ Qed.
     Qed.
     
     Theorem CQ_good_event_implies_TCQ :
-    forall w r, CQ_good_event r -> TCQ_good_event w .
+    forall w r, CQ_good_event r -> TCQ_good_event_set w r.
     Proof.
       move => w r H.
-      rewrite /TCQ_good_event.
+      rewrite /TCQ_good_event_set.
       apply (chain_quality 
                N_from_initial 
                N_forging_free 
@@ -786,7 +786,7 @@ Qed.
       Abort.
        
 
-    
+    End ChainQuality.
     
     
     
@@ -896,7 +896,7 @@ Qed.
   [set r | (1 - deltaSs) * fine muSS < X' r].
    
    
-  Lemma SS_measurable_good_event : 
+  Lemma SS_measurable_good_event_CP : 
   measurable SS_good_event.
   Proof.
     set X' := bool_trial_value SS.
@@ -920,7 +920,7 @@ Qed.
   let muAS := 'E_(\X_Sc P)[X'] in
   [set r | (1 + deltaAs) * fine muAS > X' r].
 
-  Lemma AS_measurable_good_event : 
+  Lemma AS_measurable_good_event_CP : 
     measurable AS_good_event_CP.
     Proof.
       set X' := bool_trial_value AS.
@@ -968,7 +968,7 @@ Qed.
   Definition CP_good_event := 
   SS_good_event `&` AS_good_event_CP.
 
-  Lemma union_bound :
+  Lemma union_bound_SS_AS_CP :
   (\X_Sc P) (SS_good_event `&` AS_good_event_CP)
   =
   (1%R%:E - (\X_Sc P) ((~` SS_good_event) `|` (~` AS_good_event_CP)))%E.
@@ -991,10 +991,10 @@ Qed.
       by right.
   - apply : measurableU.
     + apply measurableC.
-      apply SS_measurable_good_event.
+      apply SS_measurable_good_event_CP.
      apply measurableC.
-     apply AS_measurable_good_event.
-  Qed.
+     apply AS_measurable_good_event_CP.
+  Qed. 
   
   Variables (N N' : GlobalState).
   Hypothesis N_from_initial : N0 ⇓ N .
@@ -1029,19 +1029,19 @@ Qed.
   
   
   
-  Lemma bad_event_union_bound : 
+  Lemma bad_event_union_bound_CP : 
   ((\X_Sc P) ((~` SS_good_event) `|` (~` AS_good_event_CP))%E
    <=
   ((\X_Sc P) (~` SS_good_event)) + ((\X_Sc P) (~` AS_good_event_CP)))%E.
   Proof.
     apply : measureU2 ; apply : measurableC.
-    - apply : SS_measurable_good_event.
-    apply : AS_measurable_good_event.
+    - apply : SS_measurable_good_event_CP.
+    apply : AS_measurable_good_event_CP.
   Qed.
   
   
   
-  Theorem CP_good_event_minus_bound :
+  Theorem CP_good_event_lower_bound :
   let XSS' := bool_trial_value SS in
   let muSS := 'E_(\X_Sc P)[XSS'] in
   let XAS' := bool_trial_value AS in
@@ -1052,7 +1052,7 @@ Qed.
   <=
   (\X_Sc P) CP_good_event)%E.
   Proof.
-  rewrite union_bound.
+  rewrite union_bound_SS_AS_CP.
   About sube_eq.
   set U := (\X_Sc P) (~` SS_good_event `|` ~` AS_good_event_CP).
   cbv zeta.
@@ -1062,7 +1062,7 @@ Qed.
   rewrite /U.
   rewrite -oppeD.
   - rewrite leeN2.
-    apply (le_trans bad_event_union_bound).
+    apply (le_trans bad_event_union_bound_CP).
     rewrite leeD.
        + by [].
       rewrite /SS_good_event.
@@ -1106,7 +1106,7 @@ Qed.
   
   
   
-  
+  End CommonPrefix.
 End pos_proof.  
 
 
