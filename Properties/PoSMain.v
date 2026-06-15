@@ -63,7 +63,8 @@ Section pos_proof.
 
     Variable Sc : nat.
     Hypothesis n_sup_O: (0 < Sc)%nat. 
-
+    
+    
     (* Probabilities for LuckySlot, SuperSlot and AversarialSlot*)
     Variable pLs pSs pAs : R.
     Hypothesis pLs01 : (0 <= pLs <= 1)%R.
@@ -119,7 +120,10 @@ Section pos_proof.
     (*Assumption to link the bool_trial_value LS to the amount of lucky slots between N and N'*)
     Hypothesis LS_r_eq_slotrange : forall r, (LS_r r  = | lucky_slots_range (t_now N) (t_now N' - 1) |%:R)%N.	
  
- 
+    Lemma Sc_pos_R : (0 < (Sc%:R : R))%R.
+    Proof.
+      by rewrite ltr0n.
+    Qed.
     Lemma complementary_specialized_LS : 
     let X' := bool_trial_value LS in
     let mu := 'E_(\X_Sc P)[X'] in
@@ -453,12 +457,18 @@ Lemma complementary_AS_bound:
     Variable (b_i b_j : Block).
     Variable (c : Chain).
     Hypothesis interval_is_fragment_of_best :
-    fragment (bestChain ((t_now N)-1)%N (tree l)) ([:: b_j] ++ c ++ [:: b_i]).
+    fragment ([:: b_j] ++ c ++ [:: b_i]) (bestChain ((t_now N)-1)%N (tree l)) .
     
+
+    Check sl b_i.
+
+
+    Hypothesis LS_r_link_Bi_Bj_interval : forall r , (LS_r r = |lucky_slots_range (sl b_j) (sl b_i + 1) |%:R ).  
     
+    Hypothesis AS_r_link_Bi_Bj_interval : forall r , (AS_r r = | adv_slots_range (sl b_j) (sl b_i + 1) |%:R ).
     Variables  (epsilon:R).
 
-
+    Hypothesis delta_choice : (1 + deltaAs) * pAs < (1 - deltaLs) * pLs.
 
 
     Definition LS_good_event_CQ :=
@@ -472,9 +482,25 @@ Lemma complementary_AS_bound:
     [set r | (1 + deltaAs) * fine muAS > X' r].
     
     
-     Definition CP_good_event := LS_good_event_CQ `&` AS_good_event_CQ.
+    Definition CQ_good_event := LS_good_event_CQ `&` AS_good_event_CQ.
+    
+    Definition CQ_try_good w d := 
+    [set r : Sc.-tuple T | honest_advantage_ranges_gt w d].
     
     
+    Definition TCQ_good_event  w := ((w - 1)%N <= | honest_blocks ([:: b_j] ++ c ++ [:: b_i])|%N)%N.
+    
+    Definition TCQ_good_event_set w := 
+    [set r : Sc.-tuple T | ((w - 1)%N <= | honest_blocks ([:: b_j] ++ c ++ [:: b_i])|%N)%N].
+    
+    
+    
+
+    
+    
+
+
+
     Lemma LS_measurable_good_event : 
     measurable LS_good_event_CQ.
     Proof.
@@ -540,6 +566,9 @@ Lemma complementary_AS_bound:
     rewrite //=.
 Qed.
     
+
+
+
     
     Lemma LS_gt_AS : 
     let XLS := bool_trial_value LS in
@@ -617,7 +646,33 @@ Qed.
        apply AS_measurable_good_event.
     Qed.
 
-    
+
+    Lemma E_LS_gt_E_AS : 
+    let XLS' := bool_trial_value LS in
+    let muLS := 'E_(\X_Sc P)[XLS'] in
+    let XAS' := bool_trial_value AS in
+    let muAS := 'E_(\X_Sc P)[XAS'] in
+    (1 + deltaAs) * fine muAS < (1 - deltaLs) * fine muLS.
+    Proof.
+      cbv zeta.
+      repeat rewrite expectation_bernoulli_trial.
+      rewrite /=.
+      repeat rewrite mulrA.
+      rewrite mulrC.
+      rewrite mulrA.
+      rewrite (mulrC ((1 - deltaLs) * Sc%:R) pLs).
+      rewrite mulrA.
+      rewrite ltr_pM2r.
+      rewrite mulrC.
+      by rewrite (mulrC pLs).
+      apply Sc_pos_R.
+      apply pLs01.
+      apply pAs01.
+    Qed.
+      
+      
+      
+      
     Lemma bad_event_union_bound : 
     ((\X_Sc P) ((~` LS_good_event_CQ) `|` (~` AS_good_event_CQ))%E
     <=
@@ -629,7 +684,7 @@ Qed.
     Qed.
     
     
-    Theorem CP_good_event_minus_bound :
+    Theorem CQ_good_event_minus_bound :
     let XLS' := bool_trial_value LS in
     let muLS := 'E_(\X_Sc P)[XLS'] in
     let XAS' := bool_trial_value AS in
@@ -638,7 +693,7 @@ Qed.
     ((expR (-(fine muLS * deltaLs ^+ 2) / 2)%R)%:E) -
     ((expR (-(fine muAS * deltaAs ^+ 2) / 3)%R)%:E))%E
     <=
-    (\X_Sc P) CP_good_event)%E.
+    (\X_Sc P) CQ_good_event)%E.
     Proof.
       rewrite union_bound.
       About sube_eq.
@@ -677,6 +732,61 @@ Qed.
       apply (sampling_ineq2 pAs01 AS n_sup_O delta_range_As).
       rewrite //=.
     Qed.
+    
+    
+    
+    
+    Lemma CQ_good_event_implies_honest_advantage_bi_bj :
+    forall r , CQ_good_event r -> honest_advantage_range 1 (sl b_j) ((sl b_i) + 1).
+    Proof.
+      move => r HCQ.
+      rewrite /CQ_good_event /LS_good_event_CQ /AS_good_event_CQ in HCQ.
+      set muLs := 'E_(\X_Sc P)[(bool_trial_value LS)].
+      set muAs := 'E_(\X_Sc P)[(bool_trial_value AS)].
+      rewrite -/muLs in HCQ.
+      rewrite -/muAs in HCQ.
+      rewrite /= in HCQ.
+      rewrite /honest_advantage_range.
+      case : HCQ => HLS HAS.
+      rewrite LS_r_link_Bi_Bj_interval in HLS.
+      rewrite AS_r_link_Bi_Bj_interval in HAS.
+      apply (lt_trans E_LS_gt_E_AS) in HLS.
+      apply (lt_trans HAS) in HLS.
+      rewrite addn1. 
+      by rewrite -(ltr_nat R).
+    Qed.
+    
+    Theorem CQ_good_event_implies_TCQ :
+    forall w r, CQ_good_event r -> TCQ_good_event w .
+    Proof.
+      move => w r H.
+      rewrite /TCQ_good_event.
+      apply (chain_quality 
+               N_from_initial 
+               N_forging_free 
+               N_collision_free 
+               p_has_state_l 
+               p_is_honest 
+               interval_is_fragment_of_best).
+      rewrite /CQ_good_event  in H.
+      rewrite //= in H.
+      rewrite /LS_good_event_CQ /AS_good_event_CQ in H.
+      set muLs := 'E_(\X_Sc P)[(bool_trial_value LS)].
+      set muAs := 'E_(\X_Sc P)[(bool_trial_value AS)].
+      rewrite -/muLs in H.
+      rewrite -/muAs in H.
+      rewrite //= in H.
+      rewrite LS_r_link_Bi_Bj_interval in H.
+      rewrite AS_r_link_Bi_Bj_interval in H.
+      case : H => HLS HAS.
+      rewrite /honest_advantage_ranges_gt.
+      move => a b Hab.
+      rewrite /honest_advantage_range.
+      
+      Abort.
+       
+
+    
     
     
     
@@ -750,7 +860,6 @@ Qed.
     Qed.
 
 
-    Variables  (epsilon:R).
 
 
     Lemma epsilon_condition_CP :
@@ -816,7 +925,7 @@ Qed.
     Proof.
       set X' := bool_trial_value AS.
       set muAS := 'E_(\X_Sc P)[X'].
-      rewrite /AS_good_event_CP_CP. 
+      rewrite /AS_good_event_CP. 
       rewrite -/X'.
       rewrite -/muAS.
       set B := (1 + deltaAs) * fine muAS.
@@ -990,6 +1099,8 @@ Qed.
     apply timed_common_prefix' with (p1 := p1) (p2 := p2) ; try easy.
     move => t1' t2'.
     move => Ht1k HNt2N'.
+    
+    Abort.
 
     
   
