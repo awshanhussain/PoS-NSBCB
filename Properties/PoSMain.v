@@ -53,6 +53,16 @@
 
 
 Section pos_proof.
+
+
+
+
+    Definition tuple_interval_index {T : Type} (a b n : nat) (t : n.-tuple T) :=
+    drop a (take b t).
+    
+    
+    Compute tuple_interval_index 3 6  [:: 1;2;3;4;5;6;7;8;9;10].
+  
     Local Open Scope ereal_scope.
 
     Local Open Scope classical_set_scope.
@@ -98,6 +108,8 @@ Section pos_proof.
     Check (sampling_ineq3 pSs01 SS  delta_range_Ss).
     Check (sampling_ineq2 pAs01 AS n_sup_O delta_range_As).
     
+    
+    Search (honest_advantage_ranges_gt _ _).
     
     Section ChainGrowth.
     
@@ -457,32 +469,67 @@ Lemma complementary_AS_bound:
     Variable (b_i b_j : Block).
     Variable (c : Chain).
     Hypothesis interval_is_fragment_of_best :
-    fragment ([:: b_j] ++ c ++ [:: b_i]) (bestChain ((t_now N)-1)%N (tree l)) .
+    fragment ([:: b_j] ++ c ++ [:: b_i]) (bestChain ((t_now N)-1)%N (tree l)).
+    
+    
+    Lemma tuple_sub_size {X : Type} (a b : nat) (t : Sc.-tuple X) (Hab : (a < b)%N) (Hb : (b <= Sc)%N) :
+    size (take (b - a)%N (drop a (tval t))) == (b - a)%N.
+    Proof.
+      apply/eqP.
+      rewrite size_take size_drop size_tuple.
+      apply: minn_idPl.
+      rewrite leq_sub2r //=.
+    Qed.
+
+
+
+    Lemma tuple_interval_index_try {X : Type} (a b n : nat) (t : n.-tuple X) (Hab : (a<b)%N) (Hb : (b <= n)%N) :
+    size (drop a (take b (tval t))) == (b-a)%N.
+    Proof.
+      apply/eqP.
+      rewrite size_drop size_take size_tuple.
+      rewrite -/(minn b n). 
+      by rewrite (minn_idPl Hb).
+    Qed.
+    
+    Definition tuple_interval_index_fun ( a b n : nat) (t : n.-tuple T)
+    (Hab : (a<b)%N) (Hb : (b <= n)%N) : ((b-a)%N).-tuple T :=
+    Tuple (tuple_interval_index_try t Hab Hb).
+     
+    
+    Definition LS_sub (a b : nat) (Hab : (a < b)%N) (Hb : (b <= Sc)%N) : ((b-a)%N).-tuple (bernoulliRV P pLs) :=
+    Tuple (tuple_sub_size  LS Hab Hb).
+    
+    Hypothesis Ls_r_range_link : forall a b (Hab : (a < b)%N) (Hb : (b <= Sc)%N ) (r : Sc.-tuple T),
+    bool_trial_value (LS_sub Hab Hb) (@tuple_interval_index_fun a b Sc r Hab Hb ) = (| lucky_slots_range a b |%:R )%N.
     
 
-    Check sl b_i.
+    Definition AS_sub (a b : nat) (Hab : (a < b)%N) (Hb : (b <= Sc)%N) : ((b-a)%N).-tuple (bernoulliRV P pAs) :=
+    Tuple (tuple_sub_size AS Hab Hb).
 
-
-    Hypothesis LS_r_link_Bi_Bj_interval : forall r , (LS_r r = |lucky_slots_range (sl b_j) (sl b_i + 1) |%:R ).  
-    
-    Hypothesis AS_r_link_Bi_Bj_interval : forall r , (AS_r r = | adv_slots_range (sl b_j) (sl b_i + 1) |%:R ).
+    Hypothesis As_r_range_link : forall a b (Hab : (a<b)%N) (Hb : (b <= Sc)%N) (r : Sc.-tuple T),
+    bool_trial_value (AS_sub Hab Hb) (@tuple_interval_index_fun a b Sc r Hab Hb) = (| adv_slots_range a b |%:R)%N.
+ 
+    About minn_idPl.
+    Print honest_advantage_ranges_gt.
     
 
     Hypothesis delta_choice : (1 + deltaAs) * pAs < (1 - deltaLs) * pLs.
 
 
-    Definition LS_good_event_CQ :=
-    let X' := bool_trial_value LS in
-    let muLS := 'E_(\X_Sc P)[X'] in
+    Definition LS_good_event_CQ (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N) :=
+    let X' := bool_trial_value (LS_sub Hab Hb) in
+    let muLS := 'E_(\X_(b-a)%N P)[X'] in
     [set r | (1 - deltaLs) * fine muLS < X' r].
     
-    Definition AS_good_event_CQ :=
-    let X' := bool_trial_value AS in
-    let muAS := 'E_(\X_Sc P)[X'] in
+    Definition AS_good_event_CQ (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N) :=
+    let X' := bool_trial_value (AS_sub Hab Hb) in
+    let muAS := 'E_(\X_(b-a)%N P)[X'] in
     [set r | (1 + deltaAs) * fine muAS > X' r].
     
     
-    Definition CQ_good_event := LS_good_event_CQ `&` AS_good_event_CQ.
+    Definition CQ_good_event (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N) :=
+    (LS_good_event_CQ Hab Hb) `&` (AS_good_event_CQ  Hab Hb).
     
     Definition CQ_try_good w d := 
     [set r : Sc.-tuple T | honest_advantage_ranges_gt w d].
@@ -493,6 +540,8 @@ Lemma complementary_AS_bound:
     Definition TCQ_good_event_set w := 
     [set r : Sc.-tuple T | ((w - 1)%N <= | honest_blocks ([:: b_j] ++ c ++ [:: b_i])|%N)%N].
     
+    Print honest_advantage_ranges_gt.
+    
     
     
 
@@ -501,14 +550,12 @@ Lemma complementary_AS_bound:
 
 
 
-    Lemma LS_measurable_good_event_CQ : 
-    measurable LS_good_event_CQ.
+    Lemma LS_measurable_good_event_CQ (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N) : 
+    measurable (LS_good_event_CQ Hab Hb).
     Proof.
-      set X' := bool_trial_value LS.
-      set muLS := 'E_(\X_Sc P)[X'].
-      rewrite /LS_good_event_CQ. 
-      rewrite -/X'.
-      rewrite -/muLS.
+      rewrite /LS_good_event_CQ.
+      set X' := bool_trial_value (LS_sub Hab Hb).
+      set muLS := 'E_(\X_(b - a) P)[X'].
       set B := (1 - deltaLs) * fine muLS.
       rewrite set_lt_eq_neg_le.
       apply : measurableC.
@@ -522,14 +569,12 @@ Lemma complementary_AS_bound:
 
     
     
-    Lemma AS_measurable_good_event_CQ : 
-    measurable AS_good_event_CQ.
+    Lemma AS_measurable_good_event_CQ (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N): 
+    measurable (AS_good_event_CQ Hab Hb).
     Proof.
-      set X' := bool_trial_value AS.
-      set muAS := 'E_(\X_Sc P)[X'].
-      rewrite /AS_good_event_CQ. 
-      rewrite -/X'.
-      rewrite -/muAS.
+      rewrite /AS_good_event_CQ.
+      set X' := bool_trial_value (AS_sub Hab Hb).
+      set muAS := 'E_(\X_(b - a) P)[X']. 
       set B := (1 + deltaAs) * fine muAS.
       have Hcomp : 
       [set r | X' r < B] = [set r | ~~ (B <= X' r)].
@@ -570,11 +615,11 @@ Qed.
 
 
     
-    Lemma LS_gt_AS : 
-    let XLS := bool_trial_value LS in
-    let XAS := bool_trial_value AS in
-    let muLS := 'E_(\X_Sc P)[XLS] in
-    let muAS := 'E_(\X_Sc P)[XAS] in
+    Lemma LS_gt_AS (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N): 
+    let XLS := bool_trial_value (LS_sub Hab Hb) in
+    let XAS := bool_trial_value (AS_sub Hab Hb) in
+    let muLS := 'E_(\X_(b-a) P)[XLS] in
+    let muAS := 'E_(\X_(b-a) P)[XAS] in
     (1+deltaAs) * fine muAS < (1 - deltaLs) * fine muLS
     ->
     forall r,
@@ -618,13 +663,13 @@ Qed.
     Qed.
     
     
-    Lemma union_bound_LS_AS_CQ :
-    (\X_Sc P) (LS_good_event_CQ `&` AS_good_event_CQ)
+    Lemma union_bound_LS_AS_CQ (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N):
+    (\X_(b-a) P) ((LS_good_event_CQ Hab Hb) `&` (AS_good_event_CQ Hab Hb))
     =
-    (1%R%:E - (\X_Sc P) ((~` LS_good_event_CQ) `|` (~` AS_good_event_CQ)))%E.
+    (1%R%:E - (\X_(b-a) P) ((~` (LS_good_event_CQ Hab Hb)) `|` (~` (AS_good_event_CQ Hab Hb))))%E.
     Proof.
     rewrite -probability_setC.
-    - congr ((\X_Sc P) _).
+    - congr ((\X_(b-a) P) _).
       apply /seteqP.
       split.
       + move => r [Hl Hr].
@@ -647,11 +692,11 @@ Qed.
     Qed.
 
 
-    Lemma E_LS_gt_E_AS : 
-    let XLS' := bool_trial_value LS in
-    let muLS := 'E_(\X_Sc P)[XLS'] in
-    let XAS' := bool_trial_value AS in
-    let muAS := 'E_(\X_Sc P)[XAS'] in
+    Lemma E_LS_gt_E_AS (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N) : 
+    let XLS' := bool_trial_value (LS_sub Hab Hb) in
+    let muLS := 'E_(\X_(b - a) P)[XLS'] in
+    let XAS' := bool_trial_value (AS_sub Hab Hb) in
+    let muAS := 'E_(\X_(b - a) P)[XAS'] in
     (1 + deltaAs) * fine muAS < (1 - deltaLs) * fine muLS.
     Proof.
       cbv zeta.
@@ -660,12 +705,19 @@ Qed.
       repeat rewrite mulrA.
       rewrite mulrC.
       rewrite mulrA.
-      rewrite (mulrC ((1 - deltaLs) * Sc%:R) pLs).
+      rewrite (mulrC ((1 - deltaLs) * (b-a)%:R) pLs).
       rewrite mulrA.
       rewrite ltr_pM2r.
       rewrite mulrC.
       by rewrite (mulrC pLs).
-      apply Sc_pos_R.
+      Search "sub2r".
+      apply ltn_sub2r with (p := a) in Hab.
+      rewrite /= in Hab.
+      rewrite subnn in Hab.
+      Search ((_ < _)%N -> (_ < _)%R).
+      rewrite ltr0n.
+      apply Hab.
+      apply Hab.
       apply pLs01.
       apply pAs01.
     Qed.
@@ -673,31 +725,84 @@ Qed.
       
       
       
-    Lemma bad_event_union_bound_CQ : 
-    ((\X_Sc P) ((~` LS_good_event_CQ) `|` (~` AS_good_event_CQ))%E
+    Lemma bad_event_union_bound_CQ (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N) : 
+    ((\X_(b - a)%N P) ((~` LS_good_event_CQ Hab Hb) `|` (~` AS_good_event_CQ Hab Hb))%E
     <=
-    ((\X_Sc P) (~` LS_good_event_CQ)) + ((\X_Sc P) (~` AS_good_event_CQ)))%E.
+    ((\X_(b - a)%N P) (~` LS_good_event_CQ Hab Hb)) + ((\X_(b - a)%N P) (~` AS_good_event_CQ Hab Hb)))%E.
     Proof.
       apply : measureU2 ; apply : measurableC.
       - apply : LS_measurable_good_event_CQ.
       apply : AS_measurable_good_event_CQ.
     Qed.
-    
-    
-    Theorem CQ_good_event_minus_bound :
-    let XLS' := bool_trial_value LS in
-    let muLS := 'E_(\X_Sc P)[XLS'] in
-    let XAS' := bool_trial_value AS in
-    let muAS := 'E_(\X_Sc P)[XAS'] in
+
+    Lemma bad_event_chernoff_bound (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N) :
+    let XLS' := bool_trial_value (LS_sub Hab Hb)  in
+    let muLS := 'E_(\X_(b-a)%N P)[XLS'] in
+    let XAS' := bool_trial_value (AS_sub Hab Hb) in
+    let muAS := 'E_(\X_(b-a)%N P)[XAS'] in
+     
+    (((\X_(b - a)%N P) (~` LS_good_event_CQ Hab Hb)) +
+     ((\X_(b - a)%N P) (~` AS_good_event_CQ Hab Hb))
+    <=
+    (((expR (-(fine muLS * deltaLs ^+ 2) / 2)%R)%:E) +
+     ((expR (-(fine muAS * deltaAs ^+ 2) / 3)%R)%:E))%E)%E.
+    Proof.
+      cbv zeta.
+      set XLS' := (bool_trial_value (LS_sub Hab Hb)).
+      set muLS := 'E_(\X_(b-a)%N P)[XLS'].
+      set XAS' := (bool_trial_value (AS_sub Hab Hb)).
+      set muAS := 'E_(\X_(b-a)%N P)[XAS'].
+      
+      have HLS :
+      (((\X_(b - a) P) (~` LS_good_event_CQ Hab Hb))%E
+      <=
+      (expR (-(fine muLS * deltaLs ^+ 2) / 2)%R)%:E)%E.
+      {
+        rewrite /LS_good_event_CQ.
+        rewrite -try3.
+        apply  (sampling_ineq3 pLs01 (LS_sub Hab Hb) delta_range_Ls).
+      }
+
+      have HAS :
+      (((\X_(b - a) P) (~` AS_good_event_CQ Hab Hb))%E
+      <=
+      (expR (-(fine muAS * deltaAs ^+ 2) / 3)%R)%:E)%E.
+      {
+        rewrite /AS_good_event_CQ.
+        rewrite -try2.
+        have Hab' : (a < b)%N. {
+          easy.
+        }
+        apply ltn_sub2r with (p := a) in Hab'.
+        rewrite subnn in Hab'.
+        rewrite /muAS.
+        rewrite /XAS'.
+        apply  (sampling_ineq2 pAs01 (AS_sub Hab Hb) Hab' delta_range_As).
+        apply Hab'.
+      }
+      
+      Search ((?a <= ?b)%E -> (?c<=?d)%E ->_).
+      apply (leeD HLS HAS).
+    Qed.
+      
+      
+      
+      
+      
+    Theorem CQ_good_event_lower_bound (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N):
+    let XLS' := bool_trial_value (LS_sub Hab Hb)  in
+    let muLS := 'E_(\X_(b-a)%N P)[XLS'] in
+    let XAS' := bool_trial_value (AS_sub Hab Hb) in
+    let muAS := 'E_(\X_(b-a)%N P)[XAS'] in
     ((1%R%:E - 
     ((expR (-(fine muLS * deltaLs ^+ 2) / 2)%R)%:E) -
     ((expR (-(fine muAS * deltaAs ^+ 2) / 3)%R)%:E))%E
     <=
-    (\X_Sc P) CQ_good_event)%E.
+    (\X_(b-a)%N P) (CQ_good_event Hab Hb))%E.
     Proof.
       rewrite union_bound_LS_AS_CQ.
       About sube_eq.
-      set U := (\X_Sc P) (~` LS_good_event_CQ `|` ~` AS_good_event_CQ).
+      set U := (\X_(b-a)%N P) (~` LS_good_event_CQ Hab Hb `|` ~` AS_good_event_CQ Hab Hb).
       cbv zeta.
       rewrite -addeA.
       rewrite leeD2l.
@@ -705,21 +810,21 @@ Qed.
       rewrite /U.
       rewrite -oppeD.
       - rewrite leeN2.
-        apply (le_trans bad_event_union_bound_CQ).
+        apply (le_trans (bad_event_union_bound_CQ Hab Hb)).
         rewrite leeD.
            + by [].
           rewrite /LS_good_event_CQ.
-          apply: (le_trans _ (sampling_ineq3 pLs01 LS delta_range_Ls)).
+          apply: (le_trans _ (sampling_ineq3 pLs01 (LS_sub Hab Hb) delta_range_Ls)).
           apply : le_measure.
           * rewrite inE.
             rewrite -try3.
-            rewrite -(ST_Set ([set r | bool_trial_value LS r <= (1 - deltaLs) * fine 'E_(\X_Sc P)[(bool_trial_value LS) ] ] ) ).
+            rewrite -(ST_Set ([set r | bool_trial_value (LS_sub Hab Hb) r <= (1 - deltaLs) * fine 'E_(\X_(b-a)%N P)[(bool_trial_value (LS_sub Hab Hb)) ] ] ) ).
             apply: (measurable_fun_le (D := setT)).
             -- apply : measurableT.
             -- rewrite //=.
             rewrite //=.
           * rewrite inE.
-            rewrite -(ST_Set ([set i | bool_trial_value LS i <= (1 - deltaLs) * fine 'E_(\X_Sc P)[(bool_trial_value LS)] ] ) ).
+            rewrite -(ST_Set ([set i | bool_trial_value (LS_sub Hab Hb) i <= (1 - deltaLs) * fine 'E_(\X_(b-a)%N P)[(bool_trial_value (LS_sub Hab Hb))] ] ) ).
             apply: (measurable_fun_le (D := setT)).
             -- apply : measurableT.
             -- rewrite //=.
@@ -729,12 +834,24 @@ Qed.
           exact: Hr.
       rewrite /AS_good_event_CQ.
       rewrite -try2.
-      apply (sampling_ineq2 pAs01 AS n_sup_O delta_range_As).
+      have Haltb : (a < b  )%N.
+      { 
+        apply Hab. 
+      }
+      have H0ltab : (0 < b - a)%N.
+      {
+        Search "ltn_sub2r".
+        apply ltn_sub2r with (p:=a) in Haltb.
+        rewrite subnn in Haltb.
+        apply Haltb.
+        apply Hab.
+      }
+      apply (sampling_ineq2 pAs01 (AS_sub Hab Hb) H0ltab delta_range_As).
       rewrite //=.
     Qed.
     
     
-    
+    (*
     
     Lemma CQ_good_event_implies_honest_advantage_bi_bj :
     forall r , CQ_good_event r -> honest_advantage_range 1 (sl b_j) ((sl b_i) + 1).
@@ -761,6 +878,7 @@ Qed.
     Proof.
       move => w r H.
       rewrite /TCQ_good_event_set.
+      rewrite //=.
       apply (chain_quality 
                N_from_initial 
                N_forging_free 
@@ -780,12 +898,13 @@ Qed.
       rewrite AS_r_link_Bi_Bj_interval in H.
       case : H => HLS HAS.
       rewrite /honest_advantage_ranges_gt.
+      move => /(_ (sl b_j)).
       move => a b Hab.
       rewrite /honest_advantage_range.
       
       Abort.
        
-
+    *)
     End ChainQuality.
     
     
