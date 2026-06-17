@@ -515,7 +515,7 @@ Lemma complementary_AS_bound:
     
 
     Hypothesis delta_choice : (1 + deltaAs) * pAs < (1 - deltaLs) * pLs.
-
+  
 
     Definition LS_good_event_CQ (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N) :=
     let X' := bool_trial_value (LS_sub Hab Hb) in
@@ -545,10 +545,17 @@ Lemma complementary_AS_bound:
     
     
 
-    
-    
+    Definition CQ_all_intervals_good w d :=
+    [set i : Sc.-tuple T | forall a b (Hab : (a < b)%N) (Hb : (b <= Sc)%N),
+     (d <= (b - a))%N 
+     ->( | adv_slots_range a b | + w <= | lucky_slots_range a b | )%N ].
+     
 
-
+    
+      
+      
+      
+               
 
     Lemma LS_measurable_good_event_CQ (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N) : 
     measurable (LS_good_event_CQ Hab Hb).
@@ -849,6 +856,97 @@ Qed.
       apply (sampling_ineq2 pAs01 (AS_sub Hab Hb) H0ltab delta_range_As).
       rewrite //=.
     Qed.
+    
+    
+    Lemma CQ_bound_on_all_intervalls_implies_CQ_all_intervals_good w ds :
+    forall (r : Sc.-tuple T) ,((forall a b (Hab : (a < b)%N) (Hb : (b <= Sc)%N) ,  (CQ_good_event Hab Hb) (tuple_interval_index_fun r Hab Hb)) ->
+               (CQ_all_intervals_good w ds) r).
+    Proof.
+      move => r H a b Hab Hb HCQINTERVAL.
+      rewrite /CQ_good_event in H.
+      rewrite /LS_good_event_CQ /AS_good_event_CQ  in  H.
+      specialize (H a b Hab Hb).
+      set XLS := bool_trial_value (LS_sub Hab Hb).
+      set XAS := bool_trial_value (AS_sub Hab Hb).
+      set muLS := 'E_(\X_(b-a) P)[XLS].
+      set muAS := 'E_(\X_(b-a) P)[XAS].
+      destruct H as [HLS HAS].
+      rewrite -/XLS in HLS.
+      rewrite -/muLS in HLS.
+      rewrite //= in HLS.
+      rewrite -/XLS.
+      have XLSSIMP : (\sum_(i < b - a) Tnth (real_of_bool (LS_sub Hab Hb)) i) = bool_trial_value (LS_sub Hab Hb).
+      {
+        rewrite //=.
+      }
+      rewrite XLSSIMP in HLS.
+      rewrite Ls_r_range_link in HLS.
+      rewrite -/XAS in HAS.
+      rewrite -/muAS in HAS.
+      rewrite //= in HAS.
+      rewrite -/XAS.
+      have XASSIMP : (\sum_(i < b - a) Tnth (real_of_bool (AS_sub Hab Hb)) i) = bool_trial_value (AS_sub Hab Hb).
+      {
+        rewrite //=.
+      }
+      rewrite XASSIMP in HAS.
+      rewrite As_r_range_link in HAS.
+      have HT1: (((| adv_slots_range a b |)%:R) : R) < (| lucky_slots_range a b |)%:R.
+      {
+        About lt_trans.
+        have HT2 : (1 + deltaAs) * fine muAS < (| lucky_slots_range a b |)%:R.
+        {
+          apply (lt_trans (E_LS_gt_E_AS Hab Hb) HLS).
+        }
+        
+        apply  (lt_trans HAS HT2 ).
+      }
+      
+    Lemma CQ_on_all_intervalls_implies 
+    
+(*   
+    Nombre de tuples entre 
+    (0,1,1) (0,1,2,3) (0,1,2,3,4) (0,1,2,3,4,5) (0,1,2,3,4,5,6)
+1-t 3       4         5           6             7
+    
+2-t 2       3         4           5             6
+    
+3-t 1       2         3           4             5                    n-2
+    
+4-t 0       1         2           3             4                    n3
+    
+5-t 0       0         1           2             3                    n-4
+                                                
+                                                2
+                                                
+                                                1
+
+
+Nombre de tuples de taille (x <= taille du tuple de base)
+
+(n - (n - 1) = 1
++
+(n - (n - 2) = 2
++
+(n - (n - 3) = 3
++
+(n - (n - 4) = 4
++
+.
+.
+.
++
+(n - (n - n)) = n
+
+
+n(n-1) / 2 
+*)
+
+
+
+    
+    
+    
     
     
     (*
