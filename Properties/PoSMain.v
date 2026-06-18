@@ -858,6 +858,10 @@ Qed.
     Qed.
     
     
+    Lemma sum  : 
+
+
+
     Lemma CQ_bound_on_all_intervalls_implies_CQ_all_intervals_good w ds :
     forall (r : Sc.-tuple T) ,((forall a b (Hab : (a < b)%N) (Hb : (b <= Sc)%N) ,  (CQ_good_event Hab Hb) (tuple_interval_index_fun r Hab Hb)) ->
                (CQ_all_intervals_good w ds) r).
@@ -901,7 +905,7 @@ Qed.
         
         apply  (lt_trans HAS HT2 ).
       }
-      
+      Search (forall n , (\sum_(1 <= i <= n) i) = (n * (n + 1))/2 ).
     Lemma CQ_on_all_intervalls_implies 
     
 (*   
