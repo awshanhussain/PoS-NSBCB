@@ -858,13 +858,13 @@ Qed.
     Qed.
     
     
-    Lemma sum  : 
+    
 
 
 
-    Lemma CQ_bound_on_all_intervalls_implies_CQ_all_intervals_good w ds :
+    Lemma CQ_bound_on_all_intervalls_implies_CQ_all_intervals_at_least_1 ds :
     forall (r : Sc.-tuple T) ,((forall a b (Hab : (a < b)%N) (Hb : (b <= Sc)%N) ,  (CQ_good_event Hab Hb) (tuple_interval_index_fun r Hab Hb)) ->
-               (CQ_all_intervals_good w ds) r).
+               (CQ_all_intervals_good 1 ds) r).
     Proof.
       move => r H a b Hab Hb HCQINTERVAL.
       rewrite /CQ_good_event in H.
@@ -904,9 +904,38 @@ Qed.
         }
         
         apply  (lt_trans HAS HT2 ).
+      
       }
-      Search (forall n , (\sum_(1 <= i <= n) i) = (n * (n + 1))/2 ).
-    Lemma CQ_on_all_intervalls_implies 
+      rewrite addn1.
+      rewrite ltr_nat in HT1.
+      apply HT1.
+    Qed.
+
+
+    Fixpoint number_of_sub_tuples (n : nat) :nat := 
+    match n with
+    | 0 => 0
+    | n'.+1 => (number_of_sub_tuples n') + n'.+1
+    end.
+
+
+    Lemma number_of_sub_tuples_is_sum :
+    forall n , number_of_sub_tuples n = \sum_(0<= i < n.+1 ) i.
+    Proof.
+      move => n.
+      elim  n => [|n' IHn'].
+      - rewrite //= big_nat1 //=.
+      rewrite big_nat_recr //=.
+      rewrite IHn' //=.
+    Qed.
+
+
+      
+
+    Lemma Probability_CQ_on_all_intervall_gt_than_CQ_good_event :
+    forall r  a b (Hab : (a < b)%N) (Hb : (b <= Sc)%N) , (\X_(b - a)%N P) ((CQ_good_event Hab Hb) (tuple_interval_index_fun r Hab Hb))
+    <= 
+    (\X_(b - a)%N P) ((CQ_all_intervals_good 1 ds)) r.
     
 (*   
     Nombre de tuples entre 
