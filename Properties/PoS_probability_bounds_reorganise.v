@@ -86,7 +86,7 @@ Lemma tuple_interval_index_try {X : Type} (a b n : nat) (t : n.-tuple X) (Hab : 
       size (drop a (take b (tval t))) == (b-a)%N.
 Proof.
         apply/eqP.
-        rewrite size_drop size_take size_tuple.
+rewrite size_drop size_take size_tuple.
         rewrite -/(minn b n).
         by rewrite (minn_idPl Hb).
 Qed.
@@ -519,7 +519,7 @@ Theorem complementary_AS_event :
       (*there a number of lucky slot greater than expected and a number of adversarial slots 
       lower than expected probabilisticly on every interval [a,b] of slots greater than ds*)
     
-      Definition CQ_good_event_on_all_subset (ds a b : nat) :=
+      Definition CQ_interval_event (ds a b : nat) :=
       match boolP (a <b)%N with
       | AltTrue Hab =>
         match boolP (b <= Sc)%N with
@@ -534,14 +534,163 @@ Theorem complementary_AS_event :
        
       (* same as CQ_good_event_on_all_subset but under the form of a set which makes us able to apply 
          probabilities to it *) 
-      Definition CQ_all_intervals_good (w d : nat) : set (Sc.-tuple T) :=
-        [set r : Sc.-tuple T |
-          forall a b
-                (Hab : (a < b)%N)
-                (Hb : (b <= Sc)%N),
-            (d <= b - a)%N ->
-            CQ_good_event Hab Hb
-              (tuple_interval_index_fun r Hab Hb)]. 
+      Definition CQ_all_intervals_good (d : nat) (a b : nat) : set (Sc.-tuple T) :=
+        match boolP (a < b)%N with
+          | AltTrue Hab => match boolP (b <= Sc)%N  with
+                             | AltTrue Hb => match boolP (d <= b - a)%N with
+                                               | AltTrue Hdba => [set r : Sc.-tuple T | CQ_good_event Hab Hb (tuple_interval_index_fun r Hab Hb)]
+                                               | _ => setT
+                                              end
+                             | _ => setT
+                             end
+          | _ => setT
+          end.
+
+      Definition CQ_slot_advantage (w d : nat) : Prop :=
+      forall (a b : nat) (Hab : (a < b)%N) (Hb : (b <= Sc)%N),
+      (d <= b - a)%N
+      -> ((| adv_slots_range  a b| + w) <= | lucky_slots_range a b |)%N.
+
+
+
+
+
+        Lemma CQ_good_interval_implies_advantage (a b : nat) (Hab : (a < b)%N) (Hb : (b <= Sc)%N) (Hsize : (ds <= b - a)%N) :
+        CQ_good_event Hab Hb (@tuple_interval_index_fun a b Sc r_cq Hab Hb)
+        -> ((| adv_slots_range  a b| + w_cq) <= | lucky_slots_range a b |)%N.
+        Proof.
+          move => HGE.
+          
+          rewrite /CQ_good_event /LS_good_event_CQ /AS_good_event_CQ //= As_r_range_link Ls_r_range_link in HGE.
+          move : HGE => [HLS HAS].
+
+          have Hw := w_cq_bound Hab Hb Hsize.
+
+          rewrite -(ler_nat R) natrD.
+
+          rewrite //= in Hw.
+          
+          set muAS := fine 'E_(\X_(b - a) P)[(\sum_(i < b - a) Tnth (real_of_bool (AS_sub Hab Hb)) i)].
+          set muLS := fine 'E_(\X_(b - a) P)[(\sum_(i < b - a) Tnth (real_of_bool (LS_sub Hab Hb)) i)].
+          rewrite -/muAS -/muLS in Hw.
+          rewrite -/muAS in HAS.
+          rewrite -/muLS in HLS. 
+          have Htrans1 := le_lt_trans Hw HLS.
+          have HASw : (| adv_slots_range a b |)%:R + w_cq%:R < (1 + deltaAs) * muAS + w_cq%:R.
+          {
+            by rewrite ltrD2r.
+          }
+
+          
+
+          have htrans3 := lt_trans HASw Htrans1.
+          Search  "ltW".
+          by apply ltW in htrans3.
+          
+        Qed.  
+
+        Lemma CQ_all_intervals_good_implies_advantage : 
+        (forall a b, CQ_all_intervals_good ds a b r_cq) -> CQ_slot_advantage w_cq ds.
+        Proof.
+          move => HAIG.
+          rewrite /CQ_slot_advantage.
+          move => a0 b0 Hab Hb Hds.
+          rewrite /CQ_all_intervals_good in HAIG.
+          specialize (HAIG a0 b0).
+          destruct (boolP (a0 < b0)%N) as [Hab' | Hnab'].
+            - destruct (boolP (b0 <= Sc)%N) as [Hb' | Hnb'].
+              + destruct (boolP (ds <= b0 - a0)%N) as [Hds' | Hnds']. 
+                * rewrite /= in HAIG.
+                  have Habs : Hab = Hab'.
+                  {
+                    rewrite //=.
+                  }
+                  have Hbs : Hb = Hb'.
+                  {
+                    rewrite //=.
+                  }
+                  apply (@CQ_good_interval_implies_advantage a0 b0 Hab Hb Hds).
+                  by rewrite Habs Hbs.
+                
+                * by rewrite /negb Hds in Hnds'.
+              + by rewrite /negb Hb in Hnb'.
+            - by rewrite /negb Hab in Hnab'.
+          Qed.
+
+        Lemma measurable_tuple_interval_index_fun
+            (a b : nat)
+            (Hab : (a < b)%N)
+            (Hb : (b <= Sc)%N) :
+          measurable_fun [set: Sc.-tuple T]
+            (fun r : Sc.-tuple T =>
+              tuple_interval_index_fun r Hab Hb).
+        Proof.
+          apply/measurable_fun_tnthP => i.
+          destruct i. 
+          
+          have ty : (a + m < b)%N. {
+           Check ltn_subRL.  
+           by rewrite -ltn_subRL.
+          }
+          
+
+          have HSc_ai := ltn_leq_trans ty Hb.
+          rewrite /comp /=.
+          
+          pose j : 'I_Sc := @Ordinal Sc (a + m) HSc_ai.
+          
+          rewrite /tuple_interval_index_fun /=.
+
+          have Hcoord (x : Sc.-tuple T) :
+          tnth (Tuple (tuple_interval_index_try x Hab Hb)) (Ordinal i)
+          =
+          tnth x j.
+          {
+            rewrite [LHS](tnth_nth (tnth x j)) /=. 
+            rewrite nth_drop.
+            rewrite nth_take.
+            change (nth (tnth x j) (tval x) (val j) = tnth x j).
+            
+
+            exact: esym (tnth_nth (tnth x j) x j).
+            exact : ty.
+          }
+
+
+                    
+
+          have Hfun :
+              (fun x : Sc.-tuple T =>
+                tnth (Tuple (tuple_interval_index_try x Hab Hb)) (Ordinal i))
+              =
+              (fun x : Sc.-tuple T => tnth x j).
+          {
+            apply/funext => x.
+            exact: Hcoord x.
+          }
+
+          rewrite Hfun. 
+        
+
+
+
+        
+
+          exact: measurable_tnth.
+        Qed.
+              
+          
+
+
+
+
+           
+      
+
+
+
+
+
 
       Lemma LS_measurable_good_event_CQ (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N) :
         measurable (LS_good_event_CQ Hab Hb).
@@ -763,7 +912,6 @@ Theorem complementary_AS_event :
           rewrite -try3.
           apply  (sampling_ineq3 pLs01 (LS_sub Hab Hb) delta_range_Ls).
         }
-awshan@awshan-N15C:~/Documen
         have HAS :
         (((\X_(b - a) P) (~` AS_good_event_CQ Hab Hb))%E
         <=
@@ -829,7 +977,7 @@ awshan@awshan-N15C:~/Documen
             exact: Hr.
         rewrite /AS_good_event_CQ.
         rewrite -try2.
-        have Haltb : (a < b  )%N.
+        have Haltb : (a < b)%N.
         {
           apply Hab.
         }
@@ -843,7 +991,7 @@ awshan@awshan-N15C:~/Documen
         apply (sampling_ineq2 pAs01 (AS_sub Hab Hb) H0ltab delta_range_As).
         rewrite //=.
       Qed.
-
+      (*
       Lemma CQ_bound_on_all_intervalls_implies_CQ_all_intervals :
       ((forall a b (Hab : (a < b)%N) (Hb : (b <= Sc)%N) ,  (CQ_good_event Hab Hb) (tuple_interval_index_fun r_cq Hab Hb)) ->
                  (CQ_all_intervals_good w_cq ds) r_cq).
@@ -893,7 +1041,7 @@ awshan@awshan-N15C:~/Documen
         apply (le_trans Hw').
         exact (ltW HLS).
       Qed.
-
+       *)
       Fixpoint number_of_sub_tuples (n : nat) :nat :=
       match n with
       | 0 => 0
@@ -910,7 +1058,28 @@ awshan@awshan-N15C:~/Documen
         rewrite IHn' //=.
       Qed.
 
-      (*     
+       
+
+        Lemma measurable_all_intervals_good (d' : nat) : 
+        forall a b , measurable (CQ_all_intervals_good d' a b).
+        Proof.
+          move => a b.
+          rewrite /CQ_all_intervals_good.
+          destruct (boolP (a < b)%N) as [Hab' | Hnab'].
+            - destruct (boolP (b <= Sc)%N) as [Hb' | Hnb'].
+              + destruct (boolP (d' <= b - a)%N) as [Hdab' | Hndab'].
+                * Search "measurable" .
+                  Search (measurable [set _ | ?D ?i]).
+                  have Hfun := measurable_tuple_interval_index_fun Hab' Hb'.
+                  have Hgood_event := CQ_good_event_measurable Hab' Hb'.
+                  have Hpre := Hfun measurableT (CQ_good_event Hab' Hb') Hgood_event.
+                  rewrite setTI  in Hpre.
+                  apply Hpre. 
+                * exact : measurableT.
+              + exact : measurableT.
+            - exact : measurableT.
+        Qed.
+ 
       Lemma measurable_CQ_good_event_all_subset (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N):
       forall d , measurable (CQ_good_event_on_all_subset d a b).
       Proof.
@@ -932,7 +1101,7 @@ awshan@awshan-N15C:~/Documen
       Proof.
         move => a b Hab Hb.
 
-       *) 
+         
   (*
       Nombre de tuples entre
       (0,1,1) (0,1,2,3) (0,1,2,3,4) (0,1,2,3,4,5) (0,1,2,3,4,5,6)
@@ -1107,23 +1276,6 @@ awshan@awshan-N15C:~/Documen
       apply: (measurable_fun_le (D := setT) (f := X' ) (g := fun _ => B)).
       - apply : measurableT.
       - rewrite //=.
-      rewrite //=.
-  Qed.
-
-    Definition AS_good_event_CP :=
-    let X' := bool_trial_value AS in
-    let muAS := 'E_(\X_Sc P)[X'] in
-    [set r | (1 + deltaAs) * fine muAS > X' r].
-
-    Lemma AS_measurable_good_event_CP :
-      measurable AS_good_event_CP.
-      Proof.
-        set X' := bool_trial_value AS.
-        set muAS := 'E_(\X_Sc P)[X'].
-        rewrite /AS_good_event_CP.
-        rewrite -/X'.
-        rewrite -/muAS.
-        set B := (1 + deltaAs) * fine muAS.
         have Hcomp :
         [set r | X' r < B] = [set r | ~~ (B <= X' r)].
         {
@@ -1132,6 +1284,34 @@ awshan@awshan-N15C:~/Documen
           - move => r //= Hr ; by rewrite -ltNge.
           move => r //= Hr. by rewrite -ltNge in Hr.
         }
+        rewrite //=.
+       
+  Qed.
+    
+    Definition AS_good_event_CP :=
+    let X' := bool_trial_value AS in
+    let muAS := 'E_(\X_Sc P)[X'] in
+    [set r | (1 + deltaAs) * fine  muAS > X' r].
+
+
+    Lemma AS_measurable_good_event_CP :
+    measurable AS_good_event_CP.
+     
+         Proof.
+        rewrite /AS_good_event_CP.
+        set X' := bool_trial_value AS.
+        set muAS := 'E_(\X_Sc P)[X'].
+        set B := (1 + deltaAs) * fine muAS.
+        rewrite -/B.
+        have Hcomp :
+        [set r | X' r < B] = [set r | ~~ (B <= X' r)].
+        {
+          apply /seteqP.
+          split.
+          - move => r //= Hr ; by rewrite -ltNge.
+          move => r //= Hr. by rewrite -ltNge in Hr.
+        }
+        rewrite -/B.
         rewrite Hcomp.
         have HsetNcomp :
         [set r | ~~ (B <= X' r)] = ~` [set r | B <= X' r].
@@ -1157,7 +1337,10 @@ awshan@awshan-N15C:~/Documen
       -  by apply: measurableT.
       - rewrite  //=.
       rewrite //=.
-  Qed.
+  Qed. 
+
+  
+
 
     Definition CP_good_event :=
     SS_good_event `&` AS_good_event_CP.
