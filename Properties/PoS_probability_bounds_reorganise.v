@@ -321,10 +321,14 @@ Theorem complementary_AS_event :
       (* Protocol assumptions specific to Chain Growth. *)
 
       (*GlobalStates assumptions*)
-      Variables (N N' : GlobalState).
-      Hypothesis N_from_initial : N0 ⇓ N .
-      Hypothesis N_is_ready : N @ Ready.
-      Hypothesis N'_from_N :  N ⇓^+ N'.
+        Variables (N_from_r N'_from_r : Sc.-tuple T -> GlobalState).
+      Hypothesis N_from_initial : forall r, N0 ⇓ N_from_r r .
+      Hypothesis N_is_ready : forall r, N_from_r r @ Ready.
+      Hypothesis N'_from_N :  forall r, N_from_r r  ⇓^+ N'_from_r r.
+     
+      Search "measurable_fun_le". 
+
+
 
       (*party assumptions corresponding to CG assumptions for now*)
       Variables (p1 p2 : Party).
@@ -332,12 +336,12 @@ Theorem complementary_AS_event :
       Hypothesis p2_honest : is_honest p2.
 
       (*LocalState assumption to ling p1 and l1 to N, and p2 and l2 to N'*)
-      Variable (l1 l2 : LocalState).
-      Hypothesis l1_p1_state : has_state p1 N l1.
-      Hypothesis l2_p2_state : has_state p2 N' l2.
+      Variable (l1_from_r l2_from_r : Sc.-tuple T -> LocalState).
+      Hypothesis l1_p1_state : forall r, has_state p1 (N_from_r r) (l1_from_r r).
+      Hypothesis l2_p2_state : forall r, has_state p2 (N'_from_r r)  (l2_from_r r).
 
       (*Assumption to link the bool_trial_value LS to the amount of lucky slots between N and N'*)
-      Hypothesis LS_r_eq_slotrange : forall r, (LS_r r  = | lucky_slots_range (t_now N) (t_now N' - 1) |%:R)%N.
+      Hypothesis LS_r_eq_slotrange : forall r, (LS_r r  = | lucky_slots_range (t_now (N_from_r r)) ((t_now (N'_from_r r)) - 1) |%:R)%N.
       Definition Chain_growth_ls_Good_event :=
       let X' := bool_trial_value LS in
       let mu := 'E_(\X_Sc P)[X'] in
@@ -345,7 +349,7 @@ Theorem complementary_AS_event :
 
       Definition chain_growth_parties_event (w : nat)  :=
       let X' := bool_trial_value LS in
-      [set r : Sc.-tuple T | ((|bestChain (t_now N - 1)%N (tree l1)| + w)%N <= |bestChain (t_now N' - 1)%N (tree l2)|)%N].
+      [set r : Sc.-tuple T | ((|bestChain (t_now (N_from_r r) - 1)%N (tree (l1_from_r r))| + w)%N <= |bestChain (t_now (N'_from_r r) - 1)%N (tree (l2_from_r r))|)%N].
 
       Lemma Good_Ls_implies_chain_growth w :
       let X' := bool_trial_value LS in
@@ -367,6 +371,15 @@ Theorem complementary_AS_event :
         apply (le_trans H1).
         apply H2.
       Qed.
+      
+
+
+      (*if you want to make a chain growth event that takes in condiseration a given r, you are in the obligation
+      to define functions on Global state and LocalState that depends on a given r, those functions are abstract
+      , meaning that no mater what we won't be apple to prove they are measurable*)
+      Hypothesis chain_growth_parties_event_measurable :
+      forall w : nat,
+      measurable (chain_growth_parties_event w).
 
       Lemma probability_implication (w : nat) :
       let X' := bool_trial_value LS in
@@ -412,15 +425,9 @@ Theorem complementary_AS_event :
         apply Hle.
 
       - rewrite /chain_growth_parties_event.
-        case Hcmp : (((|bestChain (t_now N - 1)%N (tree l1)| + w)%N <= |bestChain (t_now N' - 1)%N (tree l2)|)%N).
-
-        + rewrite //=.
-          rewrite inE //=.
-          rewrite setT_def.
-          apply /measurableT.
-        + rewrite set0_def inE.
-          apply /measurable0.
-
+        rewrite  //=. 
+        rewrite inE.
+        apply chain_growth_parties_event_measurable.
       move =>r.
       apply Good_Ls_implies_chain_growth.
       apply H1.
