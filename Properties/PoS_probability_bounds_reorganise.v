@@ -522,37 +522,20 @@ Theorem complementary_AS_event :
       Definition CQ_good_event (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N) :=
       (LS_good_event_CQ Hab Hb) `&` (AS_good_event_CQ  Hab Hb).
       
-
-      (*there a number of lucky slot greater than expected and a number of adversarial slots 
-      lower than expected probabilisticly on every interval [a,b] of slots greater than ds*)
-    
-      Definition CQ_interval_event (ds a b : nat) :=
-      match boolP (a <b)%N with
-      | AltTrue Hab =>
-        match boolP (b <= Sc)%N with
-        | AltTrue Hb =>
-          if (ds <= (b - a)%N)%N then [set r | CQ_good_event Hab Hb (@tuple_interval_index_fun a b Sc r Hab Hb)]
-          else setT
-        | _ => setT
-        end
-      | _ => setT
-      end.
-
        
-      (* same as CQ_good_event_on_all_subset but under the form of a set which makes us able to apply 
-         probabilities to it *) 
-      Definition CQ_all_intervals_good (d : nat) (a b : nat) : set (Sc.-tuple T) :=
+      (* CQ good probabilistic event on an interval [a,b] where a<b and b<Sc *) 
+      Definition CQ_interval_good_event (a b : nat) : set (Sc.-tuple T) :=
         match boolP (a < b)%N with
           | AltTrue Hab => match boolP (b <= Sc)%N  with
-                             | AltTrue Hb => match boolP (d <= b - a)%N with
-                                               | AltTrue Hdba => [set r : Sc.-tuple T | CQ_good_event Hab Hb (tuple_interval_index_fun r Hab Hb)]
-                                               | _ => setT
-                                              end
+                             | AltTrue Hb => [set r : Sc.-tuple T | CQ_good_event Hab Hb (tuple_interval_index_fun r Hab Hb)]
                              | _ => setT
                              end
           | _ => setT
           end.
+      
 
+
+      (*defines that there is w more lucky slots than adversarial slots, Honest advantage of w*)
       Definition CQ_slot_advantage (w d : nat) : Prop :=
       forall (a b : nat) (Hab : (a < b)%N) (Hb : (b <= Sc)%N),
       (d <= b - a)%N
@@ -561,7 +544,8 @@ Theorem complementary_AS_event :
 
 
 
-
+        (*Verifies that if we have a probabilistic advantage of lucky slots 
+          over adversarial slots we then we have a lucky slot advantage by a static margin w_cq *)
         Lemma CQ_good_interval_implies_advantage (a b : nat) (Hab : (a < b)%N) (Hb : (b <= Sc)%N) (Hsize : (ds <= b - a)%N) :
         CQ_good_event Hab Hb (@tuple_interval_index_fun a b Sc r_cq Hab Hb)
         -> ((| adv_slots_range  a b| + w_cq) <= | lucky_slots_range a b |)%N.
@@ -595,14 +579,20 @@ Theorem complementary_AS_event :
           by apply ltW in htrans3.
           
         Qed.  
+        
 
-        Lemma CQ_all_intervals_good_implies_advantage : 
-        (forall a b, CQ_all_intervals_good ds a b r_cq) -> CQ_slot_advantage w_cq ds.
+      
+          
+        (*if for every sub interval of size at least static variable ds of the static interval r_cq,
+          we have that forall interval [a b] where the interval is ge than the fixed variable ds that
+          the number of lucky slot is greater than the fixed  variable w_cq *) 
+        Lemma CQ_all_interval_good_implies_advantage : 
+        (forall a b, CQ_interval_good_event a b r_cq) -> CQ_slot_advantage w_cq ds.
         Proof.
           move => HAIG.
           rewrite /CQ_slot_advantage.
           move => a0 b0 Hab Hb Hds.
-          rewrite /CQ_all_intervals_good in HAIG.
+          rewrite /CQ_interval_good_event in HAIG.
           specialize (HAIG a0 b0).
           destruct (boolP (a0 < b0)%N) as [Hab' | Hnab'].
             - destruct (boolP (b0 <= Sc)%N) as [Hb' | Hnb'].
@@ -623,31 +613,29 @@ Theorem complementary_AS_event :
               + by rewrite /negb Hb in Hnb'.
             - by rewrite /negb Hab in Hnab'.
           Qed.
+        
 
+
+
+        (*proof that the function that slices Sc into tuples from index a to index b is measurable*)
         Lemma measurable_tuple_interval_index_fun
             (a b : nat)
             (Hab : (a < b)%N)
-            (Hb : (b <= Sc)%N) :
+            (Hb : (b <= Sc)%N) : 
           measurable_fun [set: Sc.-tuple T]
             (fun r : Sc.-tuple T =>
               tuple_interval_index_fun r Hab Hb).
         Proof.
           apply/measurable_fun_tnthP => i.
           destruct i. 
-          
           have ty : (a + m < b)%N. {
            Check ltn_subRL.  
            by rewrite -ltn_subRL.
           }
-          
-
           have HSc_ai := ltn_leq_trans ty Hb.
           rewrite /comp /=.
-          
           pose j : 'I_Sc := @Ordinal Sc (a + m) HSc_ai.
-          
           rewrite /tuple_interval_index_fun /=.
-
           have Hcoord (x : Sc.-tuple T) :
           tnth (Tuple (tuple_interval_index_try x Hab Hb)) (Ordinal i)
           =
@@ -657,15 +645,9 @@ Theorem complementary_AS_event :
             rewrite nth_drop.
             rewrite nth_take.
             change (nth (tnth x j) (tval x) (val j) = tnth x j).
-            
-
             exact: esym (tnth_nth (tnth x j) x j).
             exact : ty.
           }
-
-
-                    
-
           have Hfun :
               (fun x : Sc.-tuple T =>
                 tnth (Tuple (tuple_interval_index_try x Hab Hb)) (Ordinal i))
@@ -675,14 +657,7 @@ Theorem complementary_AS_event :
             apply/funext => x.
             exact: Hcoord x.
           }
-
           rewrite Hfun. 
-        
-
-
-
-        
-
           exact: measurable_tnth.
         Qed.
               
@@ -1049,6 +1024,11 @@ Theorem complementary_AS_event :
         exact (ltW HLS).
       Qed.
        *)
+
+        
+
+      
+      (**)
       Fixpoint number_of_sub_tuples (n : nat) :nat :=
       match n with
       | 0 => 0
@@ -1066,49 +1046,117 @@ Theorem complementary_AS_event :
       Qed.
 
        
-
-        Lemma measurable_all_intervals_good (d' : nat) : 
-        forall a b , measurable (CQ_all_intervals_good d' a b).
+        (*the event thatthere is probabilisticly enough lucky slot and less adversarial slots is measurable for every subinterval [a,b] where d >= a b*)
+        Lemma measurable_interval_good : 
+        forall a b , measurable (CQ_interval_good_event  a b).
         Proof.
           move => a b.
-          rewrite /CQ_all_intervals_good.
+          rewrite /CQ_interval_good_event.
           destruct (boolP (a < b)%N) as [Hab' | Hnab'].
             - destruct (boolP (b <= Sc)%N) as [Hb' | Hnb'].
-              + destruct (boolP (d' <= b - a)%N) as [Hdab' | Hndab'].
-                * Search "measurable" .
+              + Search "measurable" .
                   Search (measurable [set _ | ?D ?i]).
                   have Hfun := measurable_tuple_interval_index_fun Hab' Hb'.
                   have Hgood_event := CQ_good_event_measurable Hab' Hb'.
                   have Hpre := Hfun measurableT (CQ_good_event Hab' Hb') Hgood_event.
                   rewrite setTI  in Hpre.
                   apply Hpre. 
-                * exact : measurableT.
               + exact : measurableT.
             - exact : measurableT.
         Qed.
- 
-      Lemma measurable_CQ_good_event_all_subset (a b : nat) (Hab : (a<b)%N) (Hb : (b <= Sc)%N):
-      forall d , measurable (CQ_good_event_on_all_subset d a b).
-      Proof.
-        move => d0.
-        rewrite /CQ_good_event_on_all_subset.
-        destruct (boolP ( a < b)%N) as [HabT | HabF].
-        - destruct (boolP (b <= Sc)%N) as [HbT | HbF].
-          + destruct (d0 <= b - a)%N .
-            * have : (  measurable_fun [set: Sc.-tuple T] (fun r => tuple_interval_index_fun r HabT HbT)).
-                {
-                  apply/measurable_fun_tnthP => i.
 
-                  Admitted.
+        Definition CQ_interval_good_event_d (a b d : nat) :=
+          if (d <= b - a)%N then CQ_interval_good_event a b else setT.
+      
+       Definition CQ_all_intervals_good_event (a b d : nat) : set (Sc.-tuple T) :=
+         match boolP (a < b)%N with
+         | AltTrue Hab => match boolP (b <= Sc)%N with
+                              | AltTrue Hb => match boolP (d <= b - a)%N with
+                                              | AltTrue Hd => [set r | CQ_good_event Hab Hb (tuple_interval_index_fun r Hab Hb)]
+                                              | _ => setT
+                                              end
+                              | _ => setT
+                              end
+         | _ => setT
+        end.
+      
 
-      Lemma Probability_CQ_on_all_intervall_gt_than_CQ_good_event :
-      forall  a b (Hab : (a < b)%N) (Hb : (b <= Sc)%N) , ((\X_Sc P) (CQ_good_event_on_all_subset ds)
-      <=
-      (\X_Sc P) ((CQ_all_intervals_good w_cq ds)))%E.
-      Proof.
-        move => a b Hab Hb.
 
+
+
+       Lemma CQ_all_intervals_good_event_measurable : 
+       forall a b d, measurable (CQ_all_intervals_good_event a b d).
+       Proof.
+         move => a b d'.
+         have Hm := measurable_interval_good a b.
+         rewrite /CQ_interval_good_event in Hm.
+         rewrite /CQ_all_intervals_good_event.
+         rewrite //=.
+         destruct (boolP (a < b)%N) as [Hab | Hnab].
+           - destruct (boolP (b <= Sc)%N) as [HbSc | HnbSc].
+               + destruct (boolP (d' <= b - a)%N) as [Hd'ba | Hnd'ba].
+                 apply Hm.
+               + by [].
+           - by [].
+         by [].
+       Qed.
+
+      
+       Lemma CQ_all_interval_good_implies_ls_advantage_on_every_interval :
+       (forall a b, CQ_interval_good_event a b r_cq) ->
+       CQ_slot_advantage w_cq ds.
+       Proof.
+         move => HIGE.
+         rewrite /CQ_slot_advantage.
+         rewrite /CQ_interval_good_event in HIGE.
+         move => a b Hab Hb Hdba. 
+         specialize (HIGE a b).
+         destruct (boolP (a < b)%N).
+          - destruct (boolP (b <= Sc)%N).
+              rewrite //= in HIGE.
+              
+        
+          
+
+
+        
+
+      
+
+
+
+
+
+
+
+
+          
          
+                                
+          
+        
+
+
+        Definition explore_with_fixed_size (n sub_tup_size : nat) (t : n.-tuple T) (curr_size : nat) : nat :=
+        match  
+        
+
+        Definition list_of_sub_tuples_of_size_at_least_d (n : nat) (t : n.-tuple T)  (d curr_size : nat) : nat :=
+        match d <= curr_size with
+        | true => 
+            
+
+
+
+
+        | false => 0%N
+
+
+
+
+
+
+          
   (*
       Nombre de tuples entre
       (0,1,1) (0,1,2,3) (0,1,2,3,4) (0,1,2,3,4,5) (0,1,2,3,4,5,6)
