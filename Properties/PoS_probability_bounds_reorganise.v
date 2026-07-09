@@ -1115,6 +1115,25 @@ Theorem complementary_AS_event :
         \bigcap_(a < Sc) 
         ( \bigcap_(b < Sc.+1) CQ_interval_good_event_d a b d).
 
+      
+
+      Lemma  fall_ab_CQ_prob_measurable d':
+        measurable (fall_ab_CQ_prob d').
+      Proof.
+        rewrite /fall_ab_CQ_prob.
+        Search "bigcup_measurable".
+        apply bigcap_measurable.
+        have OS0 := Ordinal n_sup_O.
+        by (exists (Ordinal n_sup_O)).
+        move => k Hk.
+        apply bigcap_measurable.
+        by (exists 0). 
+        move => k' H'.
+        apply CQ_interval_good_event_d_measurable.
+      Qed.
+        
+  
+
 
       Lemma fall_ab_CQ_prob_implies_CQ_slot_advantage_all :
         fall_ab_CQ_prob ds r_cq
@@ -1137,12 +1156,14 @@ Theorem complementary_AS_event :
 
           pose ia := Ordinal HaSc.
           pose ib := Ordinal HbSc.
+          rewrite -(ler_nat R).
+          rewrite -(Ls_r_range_link Hab Hb). 
+          Search ( (_ + _ )%:R = (_ : R) + (_ : R)). 
+          rewrite (natrD R (| adv_slots_range a b |) w_cq). 
+          rewrite -(As_r_range_link Hab Hb). 
 
-          have HcqH : CQ_interval_good_event_d a b ds r_cq.
-          {
-            move : HfP.
-            rewrite !inE.
-          }
+
+          
           
 
        
