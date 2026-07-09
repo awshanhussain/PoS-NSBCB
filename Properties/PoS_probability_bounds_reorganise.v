@@ -1065,10 +1065,8 @@ Theorem complementary_AS_event :
             - exact : measurableT.
         Qed.
 
-        Definition CQ_interval_good_event_d (a b d : nat) :=
-          if (d <= b - a)%N then CQ_interval_good_event a b else setT.
       
-       Definition CQ_all_intervals_good_event (a b d : nat) : set (Sc.-tuple T) :=
+       Definition CQ_interval_good_event_d (a b d : nat) : set (Sc.-tuple T) :=
          match boolP (a < b)%N with
          | AltTrue Hab => match boolP (b <= Sc)%N with
                               | AltTrue Hb => match boolP (d <= b - a)%N with
@@ -1084,13 +1082,13 @@ Theorem complementary_AS_event :
 
 
 
-       Lemma CQ_all_intervals_good_event_measurable : 
-       forall a b d, measurable (CQ_all_intervals_good_event a b d).
+       Lemma CQ_interval_good_event_d_measurable : 
+       forall a b d, measurable (CQ_interval_good_event_d a b d).
        Proof.
          move => a b d'.
          have Hm := measurable_interval_good a b.
          rewrite /CQ_interval_good_event in Hm.
-         rewrite /CQ_all_intervals_good_event.
+         rewrite /CQ_interval_good_event_d.
          rewrite //=.
          destruct (boolP (a < b)%N) as [Hab | Hnab].
            - destruct (boolP (b <= Sc)%N) as [HbSc | HnbSc].
@@ -1101,36 +1099,53 @@ Theorem complementary_AS_event :
          by [].
        Qed.
 
-      
-       Lemma CQ_all_interval_good_implies_ls_advantage_on_every_interval :
-       (forall a b, CQ_interval_good_event a b r_cq) ->
-       CQ_slot_advantage w_cq ds.
-       Proof.
-         move => HIGE.
-         rewrite /CQ_slot_advantage.
-         rewrite /CQ_interval_good_event in HIGE.
-         move => a b Hab Hb Hdba. 
-         specialize (HIGE a b).
-         destruct (boolP (a < b)%N).
-          - destruct (boolP (b <= Sc)%N).
-              rewrite //= in HIGE.
-              
-        
-          
-
-
+     
         
 
       
+      (*I need to find a way to define the all_interval_good event under the form of a set where the "forall a b" condition is inside the event.
+        the issue is that the measuraibilty proof is way harder and i don't know how to divide the interval and form a huge union of every interval a and b
+        where every event in the union is all the possible comibination of a and b ( meaning that for a given d we have : (a < b) (b <= Sc) (d <= b - a)). *)
 
 
 
 
 
+      Definition fall_ab_CQ_prob (d : nat) := 
+        \bigcap_(a < Sc) 
+        ( \bigcap_(b < Sc.+1) CQ_interval_good_event_d a b d).
 
 
+      Lemma fall_ab_CQ_prob_implies_CQ_slot_advantage_all :
+        fall_ab_CQ_prob ds r_cq
+        -> CQ_slot_advantage w_cq ds.
+        Proof.
+          move => HfP.
+          rewrite /CQ_slot_advantage.
+          rewrite /fall_ab_CQ_prob in HfP.
+          move => a b Hab Hb Hds. 
+          have HaSc : (a < Sc)%N.
+          {
+            apply (ltn_leq_trans Hab Hb).
+          }
 
+          have HbSc : (b < Sc.+1)%N.
+          {
+            
+            by rewrite (ltnS b Sc).
+          }
+
+          pose ia := Ordinal HaSc.
+          pose ib := Ordinal HbSc.
+
+          have HcqH : CQ_interval_good_event_d a b ds r_cq.
+          {
+            move : HfP.
+            rewrite !inE.
+          }
           
+
+       
          
                                 
           
